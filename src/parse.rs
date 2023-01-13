@@ -347,7 +347,7 @@ impl Parser<'_> {
             })
         {
             Ok(items[i].to_parse_output(&src[0..b + end_matches[2].end]))
-        } else if let Some(end) = (1..src.len() + 1).find(|&idx| {
+        } else if let Some(end) = (1..=src.len()).find(|&idx| {
             idx == src.len()
                 || src[idx..].starts_with('\n')
                 || items
