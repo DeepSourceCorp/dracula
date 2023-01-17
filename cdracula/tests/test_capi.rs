@@ -8,7 +8,7 @@ extern "C" {
 
 #[test]
 fn test_get_meaningful_line_count() {
-    // Will fail if `cargo build` hasn't been run before running this project's tests
+    // Will fail if `cargo b -p cdracula` hasn't been run before running this project's tests
     unsafe {
         let src = CString::from_vec_unchecked((String::from(r#"
         # skip this
@@ -32,7 +32,11 @@ fn test_get_cleaned_src() {
                 Multi line comments also should be zero?
             """
             pass # only two meaningful lines
-        "#) + "\0").into());
+        def python(
+            foo, bar
+        ):
+            pass
+            "#) + "\0").into());
         let v = CString::from_raw(get_cleaned_src(src.as_ptr(), 1, 0));
         println!("{}", v.to_str().unwrap());
     }

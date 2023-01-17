@@ -47,7 +47,7 @@ pub unsafe fn get_meaningful_line_count(
 pub unsafe fn meaningful_lines(
     src: *const c_char,
     lang: ffi::c_uint,
-    lines_len: *mut ffi::c_ulonglong,
+    r_lines_len: *mut ffi::c_ulonglong,
 ) -> *mut ffi::c_ulonglong {
     let mut vec = Vec::<ffi::c_ulonglong>::new();
     let cstr = ffi::CStr::from_ptr(src);
@@ -66,7 +66,7 @@ pub unsafe fn meaningful_lines(
     assert!(vec.len() == vec.capacity());
     let ptr = vec.as_mut_ptr();
     let len = vec.len();
-    *lines_len = len as _;
+    *r_lines_len = len as _;
     std::mem::forget(vec); // prevent deallocation in Rust
     ptr
 }

@@ -27,6 +27,7 @@ pub type Matches = [Match; 3];
 
 pub enum Matcher {
     Exact(&'static str),
+    PreExact(&'static str),
     Repeat(&'static str),
     Fn(&'static dyn Fn(&str) -> Option<&str>),
     AnyAlphaNumeric,
@@ -40,6 +41,13 @@ impl Matcher {
             Matcher::Exact(s) => {
                 if src.starts_with(s) {
                     Some(&src[0..s.len()])
+                } else {
+                    None
+                }
+            }
+            Matcher::PreExact(s) => {
+                if src.starts_with(s) {
+                    Some(&src[0..s.len() - 1])
                 } else {
                     None
                 }
@@ -77,6 +85,7 @@ impl Matcher {
 impl Debug for Matcher {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::PreExact(arg0) => f.debug_tuple("PreExact").field(arg0).finish(),
             Self::Exact(arg0) => f.debug_tuple("Str").field(arg0).finish(),
             Self::Repeat(arg0) => f.debug_tuple("Repeat").field(arg0).finish(),
             Self::Fn(_) => f.debug_tuple("Fn").finish(),
@@ -143,6 +152,17 @@ impl BuilderItemRange {
             begin: self.begin,
             end: EndPoint {
                 start: Matcher::Exact(src),
+                key: Matcher::Any,
+                end: Matcher::Any,
+            },
+        }
+    }
+    pub const fn pre_fixed_end(self, src: &'static str) -> ItemRange {
+        assert!(src.len() > 0);
+        ItemRange {
+            begin: self.begin,
+            end: EndPoint {
+                start: Matcher::PreExact(src),
                 key: Matcher::Any,
                 end: Matcher::Any,
             },
@@ -332,8 +352,6 @@ impl<'a> Iterator for Parser<'a> {
         }
     }
 }
-
-
 
 trait IntoString {
     fn into_string(self) -> String;

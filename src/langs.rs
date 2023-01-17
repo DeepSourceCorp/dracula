@@ -3,7 +3,7 @@ use crate::parse::*;
 pub struct C;
 impl Language for C {
     const PARSE_ITEMS: &'static [ParseItem] = &[
-        ParseItem::Comment(ItemRange::fixed_start("//").fixed_end("\n"), false),
+        ParseItem::Comment(ItemRange::fixed_start("//").pre_fixed_end("\n"), false),
         ParseItem::Comment(ItemRange::fixed_start("/*").fixed_end("*/"), false),
         ParseItem::String(ItemRange::fixed_start(r#"""#).fixed_end(r#"""#), false),
         ParseItem::UnEscaped(&ParseItem::String(
@@ -25,7 +25,7 @@ impl Language for C {
 pub struct Rust;
 impl Language for Rust {
     const PARSE_ITEMS: &'static [ParseItem] = &[
-        ParseItem::Comment(ItemRange::fixed_start("//").fixed_end("\n"), false),
+        ParseItem::Comment(ItemRange::fixed_start("//").pre_fixed_end("\n"), false),
         ParseItem::Comment(ItemRange::fixed_start("/*").fixed_end("*/"), false),
         ParseItem::String(ItemRange::fixed_start(r#"""#).fixed_end(r#"""#), false),
         ParseItem::UnEscaped(&ParseItem::String(
@@ -44,7 +44,7 @@ pub struct Python;
 impl Language for Python {
     const PARSE_ITEMS: &'static [ParseItem] = &[
         ParseItem::Comment(ItemRange::fixed_start(r#"""""#).fixed_end(r#"""""#), false),
-        ParseItem::Comment(ItemRange::fixed_start("#").fixed_end("\n"), false),
+        ParseItem::Comment(ItemRange::fixed_start("#").pre_fixed_end("\n"), false),
         ParseItem::String(ItemRange::fixed_start("\"").fixed_end("\""), false),
     ];
 }
