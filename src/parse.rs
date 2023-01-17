@@ -243,6 +243,9 @@ impl ParseOutput<'_> {
 
 pub trait Language {
     const PARSE_ITEMS: &'static [ParseItem];
+    fn is_meaningful_src(src: &str) -> bool {
+        !src.chars().all(char::is_whitespace)
+    }
 }
 
 #[derive(Debug)]

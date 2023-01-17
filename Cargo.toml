@@ -1,6 +1,27 @@
 [workspace]
-
 members = [
-    "dracula",
-    "cdracula",
+    "cdracula"
 ]
+
+[package]
+name = "dracula"
+description = "🧛 Count-ing lines, AH AH AHH!"
+version = "0.1.0"
+authors = ["Swarnim Arun <swarnim@deepsource.io>"]
+edition = "2021"
+license-file = "LICENSE"
+documentation = "https://docs.rs/dracula"
+homepage = "https://github.com/deepsourcelabs/dracula"
+repository = "https://github.com/deepsourcelabs/dracula"
+keywords = ["parsing", "line-count"]
+categories = ["command-line-utilities", "text-processing"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies.log]
+version = "0.4"
+optional = true
+
+[features]
+log = ["dep:log"]
+cli = ["log"]
