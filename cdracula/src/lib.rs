@@ -89,7 +89,7 @@ pub unsafe fn get_cleaned_src(
                 3 => Parser::new::<langs::Rust>(x),
                 _ => return "".to_string(),
             };
-            let mut meaningful_src = String::new();
+            let mut meaningful_src = String::default();
             let mut stack = vec![];
             for p in parsed {
                 if matches!(p, ParseOutput::EOL(_) | ParseOutput::EOF) {

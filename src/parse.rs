@@ -114,13 +114,15 @@ impl EndPoint {
         })
     }
 }
+
 /// ParseItem stores information to have a "Range-Based" scanner for an item
 /// Here, `&'static` is useful as it pushes the API user to build this structure as a const structure
 ///
 /// usage:
 /// ```rust
-/// const C_COMMENT: ParseItem = ParseItem::Comment(ItemRange::begin("//").end("\n"));
-/// const C_COMMENT_MULTI_LINE: ParseItem = ParseItem::UnEscaped(ParseItem::Comment(ItemRange::begin("/*").end("*/")));
+/// use dracula::parse::*;
+/// const C_COMMENT: ParseItem = ParseItem::Comment(ItemRange::fixed_start("//").pre_fixed_end("\n"), false);
+/// const C_COMMENT_MULTI_LINE: ParseItem = ParseItem::UnEscaped(&ParseItem::Comment(ItemRange::fixed_start("/*").fixed_end("*/"), false));
 /// ```
 #[derive(Debug)]
 pub enum ParseItem {

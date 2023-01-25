@@ -53,17 +53,19 @@ mod simple_python {
         let mut line_count: usize = 0;
         let mut stack = vec![];
         for p in parsed {
-            if matches!(p, ParseOutput::EOL(_) | ParseOutput::EOF) { 
-                if stack.iter().any(|i| matches!(i, ParseOutput::Source(_))) {
+            if matches!(p, ParseOutput::EOL(_) | ParseOutput::EOF) {
+                if stack.iter().any(|i| match i {
+                    ParseOutput::Source(s) => Python::is_meaningful_src(s),
+                    _ => false,
+                }) {
                     line_count += 1;
                 }
                 stack.clear();
             } else {
                 stack.push(p);
             }
-        } 
+        }
         assert_eq!(line_count, 3)
-        // .for_each(|(i, x)| println!("{i}:: {x:?}"));
     }
 }
 
