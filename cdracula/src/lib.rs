@@ -95,13 +95,10 @@ pub unsafe fn get_cleaned_src(
                 if matches!(p, ParseOutput::EOL(_) | ParseOutput::EOF) {
                     let meaningful_src_len = meaningful_src.len();
                     for po in stack.iter() {
-                        match po {
-                            ParseOutput::Source(s) => {
-                                if langs::Python::is_meaningful_src(s) {
-                                    meaningful_src.push_str(s);
-                                }
+                        if let ParseOutput::Source(s) = po {
+                            if langs::Python::is_meaningful_src(s) {
+                                meaningful_src.push_str(s);
                             }
-                            _ => {}
                         }
                     }
                     if meaningful_src_len != meaningful_src.len() {
