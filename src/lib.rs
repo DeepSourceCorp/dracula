@@ -1,8 +1,8 @@
-pub(crate) mod parse;
+pub mod parse;
+pub mod langs;
 
-// TODO: WIP on a API for count dracula
+// WIP Simplified Rust API for count dracula
 pub mod count;
-
 
 // ALl our tests live here.
 #[cfg(test)]

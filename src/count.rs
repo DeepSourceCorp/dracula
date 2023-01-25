@@ -1,2 +1,2 @@
-// TODO: WIP on a API for count dracula
+//! unstable stablized rust api for count dracula
 
