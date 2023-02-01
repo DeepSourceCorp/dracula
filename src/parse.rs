@@ -66,12 +66,11 @@ impl Matcher {
                     None
                 }
             }
-            Matcher::AnyAlphaNumeric => {
-               src.char_indices()
-               .find(|(_, c)| !c.is_alphanumeric())
-               .map(|(i, _)| &src[..i])
-               .or(Some(src))
-            }
+            Matcher::AnyAlphaNumeric => src
+                .char_indices()
+                .find(|(_, c)| !c.is_alphanumeric())
+                .map(|(i, _)| &src[..i])
+                .or(Some(src)),
             Matcher::Any => Some(""),
         }
     }
@@ -246,9 +245,12 @@ pub enum ParseOutput<'a> {
 }
 
 impl ParseOutput<'_> {
-    // pub fn invalid(err: impl AsRef<str>) -> Self {
-    //     Self::Invalid(err.as_ref().to_string())
-    // }
+    pub fn is_meaningful<L: Language>(&self) -> bool {
+        match self {
+            Self::Source(src) => L::is_meaningful_src(src),
+            _ => false,
+        }
+    }
     pub fn len(&self) -> usize {
         match self {
             Self::Comment(s) | Self::String(s) | Self::Source(s) => s.len(),
