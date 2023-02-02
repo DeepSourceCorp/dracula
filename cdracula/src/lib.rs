@@ -18,15 +18,15 @@ pub unsafe fn get_meaningful_line_count(
     kind: ffi::c_uint,
 ) -> ffi::c_ulonglong {
     let parser = match lang {
-        1 => Parser::new::<langs::Python>,
-        2 => Parser::new::<langs::C>,
-        3 => Parser::new::<langs::Rust>,
+        PYTHON => Parser::new::<langs::Python>,
+        C => Parser::new::<langs::C>,
+        RUST => Parser::new::<langs::Rust>,
         _ => return -1 as _,
     };
     let is_meaningful = match lang {
-        1 => ParseOutput::is_meaningful::<langs::Python>,
-        2 => ParseOutput::is_meaningful::<langs::C>,
-        3 => ParseOutput::is_meaningful::<langs::Rust>,
+        PYTHON => ParseOutput::is_meaningful::<langs::Python>,
+        C => ParseOutput::is_meaningful::<langs::C>,
+        RUST => ParseOutput::is_meaningful::<langs::Rust>,
         _ => return -1 as _,
     };
     let cstr = ffi::CStr::from_ptr(src);
@@ -60,15 +60,15 @@ pub unsafe fn meaningful_lines(
     r_lines_len: *mut ffi::c_ulonglong,
 ) -> *mut ffi::c_ulonglong {
     let parser = match lang {
-        1 => Parser::new::<langs::Python>,
-        2 => Parser::new::<langs::C>,
-        3 => Parser::new::<langs::Rust>,
+        PYTHON => Parser::new::<langs::Python>,
+        C => Parser::new::<langs::C>,
+        RUST => Parser::new::<langs::Rust>,
         _ => return std::ptr::null_mut(),
     };
     let is_meaningful = match lang {
-        1 => ParseOutput::is_meaningful::<langs::Python>,
-        2 => ParseOutput::is_meaningful::<langs::C>,
-        3 => ParseOutput::is_meaningful::<langs::Rust>,
+        PYTHON => ParseOutput::is_meaningful::<langs::Python>,
+        C => ParseOutput::is_meaningful::<langs::C>,
+        RUST => ParseOutput::is_meaningful::<langs::Rust>,
         _ => return std::ptr::null_mut(),
     };
     let mut meaningful_lines = Vec::<ffi::c_ulonglong>::new();
@@ -104,11 +104,11 @@ pub unsafe fn meaningful_lines(
             if po_stack.iter().any(is_meaningful) {
                 meaningful_lines.push(idx as u64);
             }
-            // debug this function
-            // -------------------
-            // println!("{} == {}", idx, po_stack.iter().any(is_meaningful));
-            // println!("{:?}", po_stack);
-            // println!("-------------------------------------------------");
+            if cfg!(dbg) {
+                eprintln!("{} == {}", idx, po_stack.iter().any(is_meaningful));
+                eprintln!("{:?}", po_stack);
+                eprintln!("-------------------------------------------------");
+            }
             if parse_span.end != line_span.end {
                 last_parsed_output = po_stack.pop();
             } else {
@@ -139,9 +139,9 @@ pub unsafe fn get_cleaned_src(
         .to_str()
         .map(|x| {
             let parsed = match lang {
-                1 => Parser::new::<langs::Python>(x),
-                2 => Parser::new::<langs::C>(x),
-                3 => Parser::new::<langs::Rust>(x),
+                PYTHON => Parser::new::<langs::Python>(x),
+                C => Parser::new::<langs::C>(x),
+                RUST => Parser::new::<langs::Rust>(x),
                 _ => return "".to_string(),
             };
             let mut meaningful_src = String::default();
