@@ -4,9 +4,16 @@
 use dracula::{langs, parse::*};
 use std::ffi::{self, c_char};
 
-pub const PYTHON: ffi::c_uint = 1;
-pub const C: ffi::c_uint = 2;
-pub const RUST: ffi::c_uint = 3;
+const PYTHON: ffi::c_uint = 1;
+const C: ffi::c_uint = 2;
+const RUST: ffi::c_uint = 3;
+
+#[no_mangle]
+pub static PYTHON_LANG: ffi::c_uint = PYTHON;
+#[no_mangle]
+pub static C_LANG: ffi::c_uint = C;
+#[no_mangle]
+pub static RUST_LANG: ffi::c_uint = RUST;
 
 #[no_mangle]
 /// get the count of meaningful lines in the source currently doesn't support
@@ -18,15 +25,15 @@ pub unsafe fn get_meaningful_line_count(
     kind: ffi::c_uint,
 ) -> ffi::c_ulonglong {
     let parser = match lang {
-        PYTHON => Parser::new::<langs::Python>,
-        C => Parser::new::<langs::C>,
-        RUST => Parser::new::<langs::Rust>,
+        PYTHON => langs::Python::get_parser(),
+        C => langs::C::get_parser(),
+        RUST => langs::Rust::get_parser(),
         _ => return -1 as _,
     };
     let is_meaningful = match lang {
-        PYTHON => ParseOutput::is_meaningful::<langs::Python>,
-        C => ParseOutput::is_meaningful::<langs::C>,
-        RUST => ParseOutput::is_meaningful::<langs::Rust>,
+        PYTHON => langs::Python::is_meaningful(),
+        C => langs::C::is_meaningful(),
+        RUST => langs::Rust::is_meaningful(),
         _ => return -1 as _,
     };
     let cstr = ffi::CStr::from_ptr(src);
@@ -60,17 +67,18 @@ pub unsafe fn meaningful_lines(
     r_lines_len: *mut ffi::c_ulonglong,
 ) -> *mut ffi::c_ulonglong {
     let parser = match lang {
-        PYTHON => Parser::new::<langs::Python>,
-        C => Parser::new::<langs::C>,
-        RUST => Parser::new::<langs::Rust>,
-        _ => return std::ptr::null_mut(),
+        PYTHON => langs::Python::get_parser(),
+        C => langs::C::get_parser(),
+        RUST => langs::Rust::get_parser(),
+        _ => return -1 as _,
     };
     let is_meaningful = match lang {
-        PYTHON => ParseOutput::is_meaningful::<langs::Python>,
-        C => ParseOutput::is_meaningful::<langs::C>,
-        RUST => ParseOutput::is_meaningful::<langs::Rust>,
-        _ => return std::ptr::null_mut(),
+        PYTHON => langs::Python::is_meaningful(),
+        C => langs::C::is_meaningful(),
+        RUST => langs::Rust::is_meaningful(),
+        _ => return -1 as _,
     };
+
     let mut meaningful_lines = Vec::<ffi::c_ulonglong>::new();
     let cstr = ffi::CStr::from_ptr(src);
     _ = cstr.to_str().map(|src| {
@@ -134,16 +142,23 @@ pub unsafe fn get_cleaned_src(
     lang: ffi::c_uint,
     exclude: ffi::c_uint,
 ) -> *mut i8 {
+    let parser = match lang {
+        PYTHON => langs::Python::get_parser(),
+        C => langs::C::get_parser(),
+        RUST => langs::Rust::get_parser(),
+        _ => return -1 as _,
+    };
+    let is_meaningful_src = match lang {
+        PYTHON => langs::Python::is_meaningful_src,
+        C => langs::C::is_meaningful_src,
+        RUST => langs::Rust::is_meaningful_src,
+        _ => return -1 as _,
+    };
     let cstr = ffi::CStr::from_ptr(src);
     let src = cstr
         .to_str()
-        .map(|x| {
-            let parsed = match lang {
-                PYTHON => Parser::new::<langs::Python>(x),
-                C => Parser::new::<langs::C>(x),
-                RUST => Parser::new::<langs::Rust>(x),
-                _ => return "".to_string(),
-            };
+        .map(|src| {
+            let parsed = parser(src);
             let mut meaningful_src = String::default();
             let mut stack = vec![];
             for p in parsed {
@@ -151,7 +166,7 @@ pub unsafe fn get_cleaned_src(
                     let meaningful_src_len = meaningful_src.len();
                     for po in stack.iter() {
                         if let ParseOutput::Source(s) = po {
-                            if langs::Python::is_meaningful_src(s) {
+                            if is_meaningful_src(s) {
                                 meaningful_src.push_str(s);
                             }
                         }

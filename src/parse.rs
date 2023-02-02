@@ -260,10 +260,16 @@ impl ParseOutput<'_> {
     }
 }
 
-pub trait Language {
+pub trait Language: Sized {
     const PARSE_ITEMS: &'static [ParseItem];
     fn is_meaningful_src(src: &str) -> bool {
         !src.chars().all(char::is_whitespace)
+    }
+    fn get_parser() -> fn(&str) -> Parser {
+        Parser::new::<Self>
+    }
+    fn is_meaningful() -> fn(&'_ ParseOutput) -> bool {
+        |x| ParseOutput::is_meaningful::<Self>(x)
     }
 }
 
