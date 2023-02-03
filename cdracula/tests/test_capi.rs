@@ -1,22 +1,32 @@
+use std::ffi;
+
+#[link(name = "cdracula")]
+extern "C" {
+    static C_LANG: ffi::c_uint;
+    static PYTHON_LANG: ffi::c_uint;
+    fn get_meaningful_line_count(
+        src: *const ffi::c_char,
+        lang: ffi::c_uint,
+        kind: ffi::c_uint,
+    ) -> ffi::c_ulonglong;
+    fn get_cleaned_src(
+        src: *const ffi::c_char,
+        lang: ffi::c_uint,
+        kind: ffi::c_uint,
+        exclude: ffi::c_uint,
+    ) -> *mut i8;
+    fn meaningful_lines(
+        src: *const ffi::c_char,
+        lang: ffi::c_uint,
+        kind: ffi::c_uint,
+        r_lines_len: *mut ffi::c_ulonglong,
+    ) -> *mut ffi::c_ulonglong;
+}
+
 #[cfg(test)]
 mod python {
-    use std::ffi::{self, c_char, CString};
-
-    #[link(name = "cdracula")]
-    extern "C" {
-        static PYTHON_LANG: ffi::c_uint;
-        fn get_meaningful_line_count(
-            src: *const c_char,
-            lang: ffi::c_uint,
-            kind: ffi::c_uint,
-        ) -> ffi::c_ulonglong;
-        fn get_cleaned_src(src: *const c_char, lang: ffi::c_uint, exclude: ffi::c_uint) -> *mut i8;
-        fn meaningful_lines(
-            src: *const c_char,
-            lang: ffi::c_uint,
-            r_lines_len: *mut ffi::c_ulonglong,
-        ) -> *mut ffi::c_ulonglong;
-    }
+    use super::*;
+    use std::ffi::{c_char, CString};
 
     #[test]
     fn test_get_meaningful_line_count() {
@@ -25,13 +35,13 @@ mod python {
             let src = CString::from_vec_unchecked(
                 (String::from(
                     r#"
-            # skip this
-            def python():
-                """
-                    Multi line comments also should be zero?
-                """
-                pass # only two meaningful lines
-            "#,
+# skip this
+def python():
+    """
+        Multi line comments also should be zero?
+    """
+    pass # only two meaningful lines
+"#,
                 ) + "\0")
                     .into(),
             );
@@ -46,20 +56,20 @@ mod python {
             let src = CString::from_vec_unchecked(
                 (String::from(
                     r#"
-            # skip this
-            def python():
-                """
-                    Multi line comments also should be zero?
-                """
-                pass # only two meaningful lines
-            "#,
+# skip this
+def python():
+    """
+        Multi line comments also should be zero?
+    """
+    pass # only two meaningful lines
+"#,
                 ) + "\0")
                     .into(),
             );
             let mut len = 0u64;
-            let ptr = meaningful_lines(src.as_ptr(), PYTHON_LANG, &mut len as *mut u64);
+            let ptr = meaningful_lines(src.as_ptr(), PYTHON_LANG, 0, &mut len as *mut u64);
+            assert!(!ptr.is_null());
             let v = Vec::from_raw_parts(ptr, len as _, len as _);
-
             assert_eq!(&v, &[2, 6]);
         }
     }
@@ -70,24 +80,30 @@ mod python {
             let src = CString::from_vec_unchecked(
                 (String::from(
                     r#"
-            # skip this
-            def python():
-                """
-                    Multi line comments also should be zero?
-                """
-                pass # only two meaningful lines
-            def python(
-                foo, bar
-            ):
-                pass
+# skip this
+def python():
+    """
+        Multi line comments also should be zero?
+    """
+    pass # only two meaningful lines
+def python(
+    foo, bar
+):
+    pass
                 "#,
                 ) + "\0")
                     .into(),
             );
-            let v = CString::from_raw(get_cleaned_src(src.as_ptr(), PYTHON_LANG, 0));
+            let v = CString::from_raw(get_cleaned_src(src.as_ptr(), PYTHON_LANG, 0, 0));
             assert_eq!(
                 v.to_str(),
-                Ok("            def python():\n                pass \n            def python(\n                foo, bar\n            ):\n                pass\n")
+                Ok(r#"def python():
+    pass 
+def python(
+    foo, bar
+):
+    pass
+"#,)
             );
         }
     }
@@ -95,23 +111,8 @@ mod python {
 
 #[cfg(test)]
 mod c_and_cpp {
+    use super::*;
     use std::ffi::{self, c_char, CString};
-
-    #[link(name = "cdracula")]
-    extern "C" {
-        static C_LANG: ffi::c_uint;
-        fn get_meaningful_line_count(
-            src: *const c_char,
-            lang: ffi::c_uint,
-            kind: ffi::c_uint,
-        ) -> ffi::c_ulonglong;
-        fn get_cleaned_src(src: *const c_char, lang: ffi::c_uint, exclude: ffi::c_uint) -> *mut i8;
-        fn meaningful_lines(
-            src: *const c_char,
-            lang: ffi::c_uint,
-            r_lines_len: *mut ffi::c_ulonglong,
-        ) -> *mut ffi::c_ulonglong;
-    }
 
     #[test]
     fn test_get_meaningful_line_count() {
@@ -119,14 +120,14 @@ mod c_and_cpp {
             let src = CString::from_vec_unchecked(
                 (String::from(
                     r#"
-                    // interesting line
-                    int main() {
-                        // maybe not useful
-                        return 0;
-                        /*
-                            this is useful
-                        */ int x = 10;
-                    }
+// interesting line
+int main() {
+    // maybe not useful
+    return 0;
+    /*
+        this is useful
+    */ int x = 10;
+}
                     "#,
                 ) + "\0")
                     .into(),
@@ -137,31 +138,6 @@ mod c_and_cpp {
 
     #[test]
     fn test_get_meaningful_lines() {
-        unsafe {
-            let src = CString::from_vec_unchecked(
-                (String::from(
-                    r#"
-                    // interesting line
-                    int main() {
-                        // maybe not useful
-                        return 0;
-                        /*
-                            this is useful
-                        */ int x = 10;
-                    }
-                    "#,
-                ) + "\0")
-                    .into(),
-            );
-            let mut len = 0u64;
-            let ptr = meaningful_lines(src.as_ptr(), C_LANG, &mut len as *mut u64);
-            let v = Vec::from_raw_parts(ptr, len as _, len as _);
-            assert_eq!(&v, &[2, 4, 7, 8]);
-        }
-    }
-
-    #[test]
-    fn test_get_cleaned_src() {
         unsafe {
             let src = CString::from_vec_unchecked(
                 (String::from(
@@ -178,14 +154,39 @@ int main() {
                 ) + "\0")
                     .into(),
             );
-            let v = CString::from_raw(get_cleaned_src(src.as_ptr(), C_LANG, 0));
+            let mut len = 0u64;
+            let ptr = meaningful_lines(src.as_ptr(), C_LANG, 0, &mut len as *mut u64);
+            let v = Vec::from_raw_parts(ptr, len as _, len as _);
+            assert_eq!(&v, &[2, 4, 7, 8]);
+        }
+    }
+
+    #[test]
+    #[rustfmt::skip]
+    fn test_get_cleaned_src() {
+        unsafe {
+            let src = CString::from_vec_unchecked(
+                (String::from(
+                    r#"
+// interesting line
+int main() {
+    // maybe not useful
+    return 0;
+    /*
+        this is useful
+    */ int x = 10;
+}"#,
+                ) + "\0")
+                    .into(),
+            );
+            let v = CString::from_raw(get_cleaned_src(src.as_ptr(), C_LANG, 0, 0));
             assert_eq!(
                 v.to_str(),
-                Ok(r#"int main() {
+                Ok(
+r#"int main() {
     return 0;
  int x = 10;
-}
- "#,)
+}"#,)
             );
         }
     }

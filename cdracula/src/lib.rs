@@ -42,7 +42,7 @@ fn get_meaningful_line(lang: ffi::c_uint) -> Option<fn(&ParseOutput) -> bool> {
 
 #[no_mangle]
 /// This function is used to get the count of meaningful lines in the source.
-/// 
+///
 /// It currently doesn't support setting the multiple ways(`kind`) of meaningful line
 /// search eg. `ignore whitespace`, `specific character`, etc.
 /// aka the definition of a meaningful line.
@@ -83,12 +83,12 @@ pub unsafe fn get_meaningful_line_count(
 
 #[no_mangle]
 /// This function is used to get the list of meaningful lines in the source.
-/// 
+///
 /// It currently doesn't support setting the multiple ways(`kind`) of meaningful line
 /// search eg. `ignore whitespace`, `specific character`, etc.
 /// aka the definition of a meaningful line.
 /// But provided as field to avoid ABI incompatibility later.
-/// 
+///
 /// NOTE:
 /// The caller is responsible for free'ing the obtained array
 pub unsafe fn meaningful_lines(
@@ -104,6 +104,9 @@ pub unsafe fn meaningful_lines(
         return std::ptr::null_mut()
     };
     let mut meaningful_lines = Vec::<ffi::c_ulonglong>::new();
+    if cfg!(dbg) {
+        assert!(!src.is_null());
+    }
     let cstr = ffi::CStr::from_ptr(src);
     _ = cstr.to_str().map(|src| {
         let mut parsed = parser(src);
@@ -149,7 +152,9 @@ pub unsafe fn meaningful_lines(
         }
     });
     meaningful_lines.shrink_to_fit();
-    assert!(meaningful_lines.len() == meaningful_lines.capacity());
+    if cfg!(dbg) {
+        assert!(meaningful_lines.len() == meaningful_lines.capacity());
+    }
     let ptr = meaningful_lines.as_mut_ptr();
     let len = meaningful_lines.len();
     *r_lines_len = len as _;
@@ -160,12 +165,12 @@ pub unsafe fn meaningful_lines(
 #[no_mangle]
 /// This function is used to get the source of just the meaningful parts in the source,
 /// including the whitespaces.
-/// 
+///
 /// It currently doesn't support setting the multiple ways(`kind`) of meaningful line
 /// search eg. `ignore whitespace`, `specific character`, etc.
 /// aka the definition of a meaningful line.
 /// But provided as field to avoid ABI incompatibility later.
-/// 
+///
 /// NOTE:
 /// The caller is responsible for free'ing the obtained array
 pub unsafe fn get_cleaned_src(
@@ -201,7 +206,9 @@ pub unsafe fn get_cleaned_src(
                             }
                         }
                     }
-                    if meaningful_src_len != meaningful_src.len() {
+                    if matches!(p, ParseOutput::EOL(_))
+                        && meaningful_src_len != meaningful_src.len()
+                    {
                         meaningful_src.push('\n');
                     }
                     stack.clear();
