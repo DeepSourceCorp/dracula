@@ -1,14 +1,24 @@
 use crate::parse::*;
 
+pub struct Java;
+impl Language for Java {
+    const PARSE_ITEMS: &'static [ParseItem] = &[
+        ParseItem::Comment(ItemRange::fixed_start("//").pre_fixed_end("\n"), false),
+        ParseItem::Comment(ItemRange::fixed_start("/*").fixed_end("*/"), false),
+        ParseItem::String(ItemRange::fixed_start("\"\"\"").fixed_end("\"\"\""), false),
+        ParseItem::String(ItemRange::fixed_start("\"").fixed_end("\""), false),
+    ];
+}
+
 pub struct C;
 impl Language for C {
     const PARSE_ITEMS: &'static [ParseItem] = &[
         ParseItem::Comment(ItemRange::fixed_start("//").pre_fixed_end("\n"), false),
         ParseItem::Comment(ItemRange::fixed_start("/*").fixed_end("*/"), false),
-        ParseItem::String(ItemRange::fixed_start(r#"""#).fixed_end(r#"""#), false),
+        ParseItem::String(ItemRange::fixed_start("\"").fixed_end("\""), false),
         ParseItem::UnEscaped(&ParseItem::String(
             ItemRange::start_matcher(
-                Matcher::Exact(r#"R""#),
+                Matcher::Exact("R\""),
                 Matcher::AnyAlphaNumeric,
                 Matcher::Exact("("),
             )
@@ -18,7 +28,7 @@ impl Language for C {
                 Matcher::Exact(r#"""#),
             ),
             true,
-        )),
+        )), // R"UNIQUE_KEY( RAW STRING )UNIQUE_KEY"
     ];
 }
 
@@ -43,7 +53,7 @@ impl Language for Rust {
 pub struct Python;
 impl Language for Python {
     const PARSE_ITEMS: &'static [ParseItem] = &[
-        ParseItem::Comment(ItemRange::fixed_start(r#"""""#).fixed_end(r#"""""#), false),
+        ParseItem::Comment(ItemRange::fixed_start("\"\"\"").fixed_end("\"\"\""), false),
         ParseItem::Comment(ItemRange::fixed_start("#").pre_fixed_end("\n"), false),
         ParseItem::String(ItemRange::fixed_start("\"").fixed_end("\""), false),
     ];

@@ -166,22 +166,26 @@ mod c_and_cpp {
             let src = CString::from_vec_unchecked(
                 (String::from(
                     r#"
-                    // interesting line
-                    int main() {
-                        // maybe not useful
-                        return 0;
-                        /*
-                            this is useful
-                        */ int x = 10;
-                    }
-                    "#,
+// interesting line
+int main() {
+    // maybe not useful
+    return 0;
+    /*
+        this is useful
+    */ int x = 10;
+}
+"#,
                 ) + "\0")
                     .into(),
             );
             let v = CString::from_raw(get_cleaned_src(src.as_ptr(), C_LANG, 0));
             assert_eq!(
                 v.to_str(),
-                Ok("                    int main() {\n                        return 0;\n int x = 10;\n                    }\n")
+                Ok(r#"int main() {
+    return 0;
+ int x = 10;
+}
+ "#,)
             );
         }
     }
