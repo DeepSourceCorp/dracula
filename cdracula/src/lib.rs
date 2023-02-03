@@ -47,8 +47,10 @@ pub unsafe fn get_meaningful_line_count(
                     if stack.iter().any(is_meaningful) {
                         line_count += 1;
                     }
+                    // We clear the stack once we reach the end of a line.
                     stack.clear();
                 } else {
+                    // we accumulate tokens we see as meaningful tokens for the language.
                     stack.push(p);
                 }
             }
