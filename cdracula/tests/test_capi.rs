@@ -4,6 +4,8 @@ use std::ffi;
 extern "C" {
     static C_LANG: ffi::c_uint;
     static PYTHON_LANG: ffi::c_uint;
+    static RUST_LANG: ffi::c_uint;
+    static JAVA_LANG: ffi::c_uint;
     fn get_meaningful_line_count(
         src: *const ffi::c_char,
         lang: ffi::c_uint,
@@ -26,7 +28,7 @@ extern "C" {
 #[cfg(test)]
 mod python {
     use super::*;
-    use std::ffi::{c_char, CString};
+    use std::ffi::CString;
 
     #[test]
     fn test_get_meaningful_line_count() {
@@ -75,6 +77,7 @@ def python():
     }
 
     #[test]
+    #[rustfmt::skip]
     fn test_get_cleaned_src() {
         unsafe {
             let src = CString::from_vec_unchecked(
@@ -97,7 +100,8 @@ def python(
             let v = CString::from_raw(get_cleaned_src(src.as_ptr(), PYTHON_LANG, 0, 0));
             assert_eq!(
                 v.to_str(),
-                Ok(r#"def python():
+                Ok(
+r#"def python():
     pass 
 def python(
     foo, bar
@@ -112,7 +116,7 @@ def python(
 #[cfg(test)]
 mod c_and_cpp {
     use super::*;
-    use std::ffi::{self, c_char, CString};
+    use std::ffi::CString;
 
     #[test]
     fn test_get_meaningful_line_count() {

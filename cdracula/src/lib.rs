@@ -1,44 +1,27 @@
 //! Functions provided here are a wrapper around `dracula` crate
 #![deny(improper_ctypes_definitions)]
+#![allow(non_upper_case_globals)]
 
-use dracula::{langs, parse::*};
+mod util_macros;
+
+use dracula::parse::ParseOutput;
 use std::ffi::{self, c_char};
 
-const PYTHON: ffi::c_uint = 1;
-const C: ffi::c_uint = 2;
-const RUST: ffi::c_uint = 3;
-const JAVA: ffi::c_uint = 4;
+languages_supported! {
+    const Python = 1;
+    const C = 2;
+    const Rust = 3;
+    const Java = 4;
+}
 
 #[no_mangle]
-pub static PYTHON_LANG: ffi::c_uint = PYTHON;
+pub static PYTHON_LANG: ffi::c_uint = Python;
 #[no_mangle]
 pub static C_LANG: ffi::c_uint = C;
 #[no_mangle]
-pub static RUST_LANG: ffi::c_uint = RUST;
+pub static RUST_LANG: ffi::c_uint = Rust;
 #[no_mangle]
-pub static JAVA_LANG: ffi::c_uint = JAVA;
-
-fn get_parser(lang: ffi::c_uint) -> Option<fn(&str) -> Parser> {
-    let parser = match lang {
-        PYTHON => langs::Python::get_parser(),
-        C => langs::C::get_parser(),
-        RUST => langs::Rust::get_parser(),
-        JAVA => langs::Java::get_parser(),
-        _ => return None,
-    };
-    Some(parser)
-}
-
-fn get_meaningful_line(lang: ffi::c_uint) -> Option<fn(&ParseOutput) -> bool> {
-    let is_meaningful = match lang {
-        PYTHON => langs::Python::is_meaningful(),
-        C => langs::C::is_meaningful(),
-        RUST => langs::Rust::is_meaningful(),
-        JAVA => langs::Java::is_meaningful(),
-        _ => return None,
-    };
-    Some(is_meaningful)
-}
+pub static JAVA_LANG: ffi::c_uint = Java;
 
 #[no_mangle]
 /// This function is used to get the count of meaningful lines in the source.
@@ -55,7 +38,7 @@ pub unsafe fn get_meaningful_line_count(
     let Some(parser) = get_parser(lang) else {
         return ffi::c_ulonglong::MAX
     };
-    let Some(is_meaningful) = get_meaningful_line(lang) else {
+    let Some(is_meaningful) = is_meaningful(lang) else {
         return ffi::c_ulonglong::MAX
     };
     let cstr = ffi::CStr::from_ptr(src);
@@ -100,7 +83,7 @@ pub unsafe fn meaningful_lines(
     let Some(parser) = get_parser(lang) else {
         return std::ptr::null_mut()
     };
-    let Some(is_meaningful) = get_meaningful_line(lang) else {
+    let Some(is_meaningful) = is_meaningful(lang) else {
         return std::ptr::null_mut()
     };
     let mut meaningful_lines = Vec::<ffi::c_ulonglong>::new();
@@ -182,12 +165,8 @@ pub unsafe fn get_cleaned_src(
     let Some(parser) = get_parser(lang) else {
         return std::ptr::null_mut()
     };
-    let is_meaningful_src = match lang {
-        PYTHON => langs::Python::is_meaningful_src,
-        C => langs::C::is_meaningful_src,
-        RUST => langs::Rust::is_meaningful_src,
-        JAVA => langs::Java::is_meaningful_src,
-        _ => return std::ptr::null_mut(),
+    let Some(is_meaningful_src) = is_meaningful_src(lang) else {
+        return std::ptr::null_mut()
     };
     let cstr = ffi::CStr::from_ptr(src);
     let src = cstr
