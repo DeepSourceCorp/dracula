@@ -27,6 +27,7 @@ pub type Matches = [Match; 3];
 
 pub enum Matcher {
     Exact(&'static str),
+    PreExact(&'static str),
     Repeat(&'static str),
     Fn(&'static dyn Fn(&str) -> Option<&str>),
     AnyAlphaNumeric,
@@ -35,11 +36,18 @@ pub enum Matcher {
 
 impl Matcher {
     /// All matches use this
-    pub fn get_match<'a>(&self, src: &'a str) -> Option<&'a str> {
+    fn get_match<'a>(&self, src: &'a str) -> Option<&'a str> {
         match self {
             Matcher::Exact(s) => {
                 if src.starts_with(s) {
                     Some(&src[0..s.len()])
+                } else {
+                    None
+                }
+            }
+            Matcher::PreExact(s) => {
+                if src.starts_with(s) {
+                    Some(&src[0..s.len() - 1])
                 } else {
                     None
                 }
@@ -58,31 +66,20 @@ impl Matcher {
                     None
                 }
             }
-            Matcher::AnyAlphaNumeric => {
-               src.char_indices()
-               .find(|(_, c)| !c.is_alphanumeric())
-               .map_or(src, |(i, _)| &src[..i])
-            }
+            Matcher::AnyAlphaNumeric => src
+                .char_indices()
+                .find(|(_, c)| !c.is_alphanumeric())
+                .map(|(i, _)| &src[..i])
+                .or(Some(src)),
             Matcher::Any => Some(""),
         }
     }
-
-    // TODO: again doesn't seem useful
-    // till match is generally only used for end match and trying to get key from it.
-    // pub fn till_match(&self, src: &str) -> Option<usize> {
-    //     (0..src.len().min(256)).find_map(|x| {
-    //         if self.get_match(&src[x..]).is_some() {
-    //             Some(x)
-    //         } else {
-    //             None
-    //         }
-    //     })
-    // }
 }
 
 impl Debug for Matcher {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::PreExact(arg0) => f.debug_tuple("PreExact").field(arg0).finish(),
             Self::Exact(arg0) => f.debug_tuple("Str").field(arg0).finish(),
             Self::Repeat(arg0) => f.debug_tuple("Repeat").field(arg0).finish(),
             Self::Fn(_) => f.debug_tuple("Fn").finish(),
@@ -105,7 +102,7 @@ impl EndPoint {
         let s1 = start_match.len();
         let key_match = self.key.get_match(&src[s1..])?;
         let s2 = s1 + key_match.len();
-        let end_match = self.key.get_match(&src[s2..])?;
+        let end_match = self.end.get_match(&src[s2..])?;
         let s3 = s2 + end_match.len();
         Some([Span::new(0, s1), Span::new(s1, s2), Span::new(s2, s3)])
     }
@@ -116,13 +113,15 @@ impl EndPoint {
         })
     }
 }
+
 /// ParseItem stores information to have a "Range-Based" scanner for an item
 /// Here, `&'static` is useful as it pushes the API user to build this structure as a const structure
 ///
 /// usage:
 /// ```rust
-/// const C_COMMENT: ParseItem = ParseItem::Comment(ItemRange::begin("//").end("\n"));
-/// const C_COMMENT_MULTI_LINE: ParseItem = ParseItem::UnEscaped(ParseItem::Comment(ItemRange::begin("/*").end("*/")));
+/// use dracula::parse::*;
+/// const C_COMMENT: ParseItem = ParseItem::Comment(ItemRange::fixed_start("//").pre_fixed_end("\n"), false);
+/// const C_COMMENT_MULTI_LINE: ParseItem = ParseItem::UnEscaped(&ParseItem::Comment(ItemRange::fixed_start("/*").fixed_end("*/"), false));
 /// ```
 #[derive(Debug)]
 pub enum ParseItem {
@@ -149,6 +148,17 @@ impl BuilderItemRange {
             begin: self.begin,
             end: EndPoint {
                 start: Matcher::Exact(src),
+                key: Matcher::Any,
+                end: Matcher::Any,
+            },
+        }
+    }
+    pub const fn pre_fixed_end(self, src: &'static str) -> ItemRange {
+        assert!(src.len() > 0);
+        ItemRange {
+            begin: self.begin,
+            end: EndPoint {
+                start: Matcher::PreExact(src),
                 key: Matcher::Any,
                 end: Matcher::Any,
             },
@@ -195,6 +205,7 @@ impl ParseItem {
     }
     pub fn is_key_matched(&self) -> bool {
         match self {
+            Self::Escaped(k) | Self::UnEscaped(k) => k.is_key_matched(),
             Self::String(_, true) | Self::Comment(_, true) => true,
             _ => false,
         }
@@ -234,9 +245,12 @@ pub enum ParseOutput<'a> {
 }
 
 impl ParseOutput<'_> {
-    // pub fn invalid(err: impl AsRef<str>) -> Self {
-    //     Self::Invalid(err.as_ref().to_string())
-    // }
+    pub fn is_meaningful<L: Language>(&self) -> bool {
+        match self {
+            Self::Source(src) => L::is_meaningful_src(src),
+            _ => false,
+        }
+    }
     pub fn len(&self) -> usize {
         match self {
             Self::Comment(s) | Self::String(s) | Self::Source(s) => s.len(),
@@ -246,57 +260,17 @@ impl ParseOutput<'_> {
     }
 }
 
-pub trait Language {
+pub trait Language: Sized {
     const PARSE_ITEMS: &'static [ParseItem];
-}
-
-pub struct C;
-impl Language for C {
-    const PARSE_ITEMS: &'static [ParseItem] = &[
-        ParseItem::Comment(ItemRange::fixed_start("//").fixed_end("\n"), false),
-        ParseItem::Comment(ItemRange::fixed_start("/*").fixed_end("*/"), false),
-        ParseItem::String(ItemRange::fixed_start(r#"""#).fixed_end(r#"""#), false),
-        ParseItem::UnEscaped(&ParseItem::String(
-            ItemRange::start_matcher(
-                Matcher::Exact(r#"R""#),
-                Matcher::AnyAlphaNumeric,
-                Matcher::Exact("("),
-            )
-            .end_matcher(
-                Matcher::Exact(r#")"#),
-                Matcher::AnyAlphaNumeric,
-                Matcher::Exact(r#"""#),
-            ),
-            true,
-        )),
-    ];
-}
-
-pub struct Rust;
-impl Language for Rust {
-    const PARSE_ITEMS: &'static [ParseItem] = &[
-        ParseItem::Comment(ItemRange::fixed_start("//").fixed_end("\n"), false),
-        ParseItem::Comment(ItemRange::fixed_start("/*").fixed_end("*/"), false),
-        ParseItem::String(ItemRange::fixed_start(r#"""#).fixed_end(r#"""#), false),
-        ParseItem::UnEscaped(&ParseItem::String(
-            ItemRange::start_matcher(
-                Matcher::Exact(r#"r"#),
-                Matcher::Repeat("#"),
-                Matcher::Exact(r#"""#),
-            )
-            .end_matcher(Matcher::Exact(r#"""#), Matcher::Repeat("#"), Matcher::Any),
-            true,
-        )),
-    ];
-}
-
-pub struct Python;
-impl Language for Python {
-    const PARSE_ITEMS: &'static [ParseItem] = &[
-        ParseItem::Comment(ItemRange::fixed_start(r#"""""#).fixed_end(r#"""""#), false),
-        ParseItem::Comment(ItemRange::fixed_start("#").fixed_end("\n"), false),
-        ParseItem::String(ItemRange::fixed_start("\"").fixed_end("\""), false),
-    ];
+    fn is_meaningful_src(src: &str) -> bool {
+        !src.chars().all(char::is_whitespace)
+    }
+    fn get_parser() -> fn(&str) -> Parser {
+        Parser::new::<Self>
+    }
+    fn is_meaningful() -> fn(&'_ ParseOutput) -> bool {
+        |x| ParseOutput::is_meaningful::<Self>(x)
+    }
 }
 
 #[derive(Debug)]
@@ -317,6 +291,8 @@ impl Parser<'_> {
         }
     }
 
+    /// Try to parse as per the given grammar.
+    /// This function will return an error if parsing as the given grammar fails
     pub fn parse<'a>(&self, src: &'a str) -> Result<ParseOutput<'a>, String> {
         let items = self.language_items;
         if src.starts_with('\n') {
@@ -379,5 +355,21 @@ impl<'a> Iterator for Parser<'a> {
                 x
             }))
         }
+    }
+}
+
+trait IntoString {
+    fn into_string(self) -> String;
+}
+
+impl IntoString for &'_ str {
+    fn into_string(self) -> String {
+        self.to_string()
+    }
+}
+
+impl IntoString for &'_ String {
+    fn into_string(self) -> String {
+        self.to_owned()
     }
 }

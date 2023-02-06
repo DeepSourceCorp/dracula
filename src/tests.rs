@@ -1,9 +1,10 @@
 #[cfg(test)]
 mod simple_c {
+    use crate::parse::*;
+    use crate::langs::*;
 
     #[test]
     fn try_parse() {
-        use crate::count::*;
         Parser::new::<C>(
             r#"
             // The default entry point for C programs
@@ -17,6 +18,8 @@ mod simple_c {
             ) {
                 int c = 2;
                 char* str = "hello from C!";
+                char* str = R"(hello from
+                     C!)";
                 /* Multi-Line Comments
                  seems to work as well */
                 return 0;
@@ -30,10 +33,11 @@ mod simple_c {
 
 #[cfg(test)]
 mod simple_python {
+    use crate::parse::*;
+    use crate::langs::*;
 
     #[test]
     fn try_parse() {
-        use crate::count::*;
         let parsed = Parser::new::<Python>(
             r#"# some top level comments
             def main():
@@ -49,17 +53,19 @@ mod simple_python {
         let mut line_count: usize = 0;
         let mut stack = vec![];
         for p in parsed {
-            if matches!(p, ParseOutput::EOL(_) | ParseOutput::EOF) { 
-                if stack.iter().any(|i| matches!(i, ParseOutput::Source(_))) {
+            if matches!(p, ParseOutput::EOL(_) | ParseOutput::EOF) {
+                if stack.iter().any(|i| match i {
+                    ParseOutput::Source(s) => Python::is_meaningful_src(s),
+                    _ => false,
+                }) {
                     line_count += 1;
                 }
                 stack.clear();
             } else {
                 stack.push(p);
             }
-        } 
+        }
         assert_eq!(line_count, 3)
-        // .for_each(|(i, x)| println!("{i}:: {x:?}"));
     }
 }
 
@@ -67,10 +73,11 @@ mod simple_python {
 
 #[cfg(test)]
 mod simple_rust {
+    use crate::parse::*;
+    use crate::langs::*;
 
     #[test]
     fn try_parse() {
-        use crate::count::*;
         Parser::new::<Rust>(
             r##"
             // The default entry point for C programs
