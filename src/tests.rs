@@ -5,7 +5,7 @@ mod simple_c {
 
     #[test]
     fn try_parse() {
-        Parser::new::<C>(
+        Parser::<C>::new(
             r#"
             // The default entry point for C programs
             // --------------------------------------
@@ -25,9 +25,9 @@ mod simple_c {
                 return 0;
             }
         "#,
-        )
-        .enumerate()
-        .for_each(|(i, x)| println!("{i}:: {x:?}"));
+        ).for_each(|_| ()); // run to completion
+        // .enumerate()
+        // .for_each(|(i, x)| println!("{i}:: {x:?}"));
     }
 }
 
@@ -38,7 +38,7 @@ mod simple_python {
 
     #[test]
     fn try_parse() {
-        let parsed = Parser::new::<Python>(
+        let parsed = Parser::<Python>::new(
             r#"# some top level comments
             def main():
                 print("s");"""
@@ -78,7 +78,7 @@ mod simple_rust {
 
     #[test]
     fn try_parse() {
-        Parser::new::<Rust>(
+        Parser::<Rust>::new(
             r##"
             // The default entry point for C programs
             // --------------------------------------

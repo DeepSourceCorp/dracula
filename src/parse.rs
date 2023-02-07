@@ -2,6 +2,7 @@ use core::fmt::Debug;
 
 #[cfg(backtrace)]
 use std::backtrace::Backtrace;
+use std::marker::PhantomData;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Span {
@@ -234,7 +235,7 @@ impl ParseItem {
 //     // }
 // }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum ParseOutput<'a> {
     Comment(&'a str),
     String(&'a str),
@@ -265,29 +266,31 @@ pub trait Language: Sized {
     fn is_meaningful_src(src: &str) -> bool {
         !src.chars().all(char::is_whitespace)
     }
-    fn get_parser() -> fn(&str) -> Parser {
-        Parser::new::<Self>
+    fn get_parser(src: &str) -> Parser<Self> {
+        Parser::<Self>::new(src)
     }
-    fn is_meaningful() -> fn(&'_ ParseOutput) -> bool {
-        |x| ParseOutput::is_meaningful::<Self>(x)
+    fn is_meaningful(parse_output: &ParseOutput) -> bool {
+        ParseOutput::is_meaningful::<Self>(parse_output)
     }
 }
 
-#[derive(Debug)]
-pub struct Parser<'a> {
+#[derive(Debug, Default)]
+pub struct Parser<'a, L: Language> {
     src: &'a str,
     index: usize,
     language_items: &'static [ParseItem],
+    _marker: PhantomData<L>
 }
 
 // most this is only used in tests atm!
-impl Parser<'_> {
+impl<L: Language> Parser<'_, L> {
     /// Creates a new [`Parser`].
-    pub fn new<'a, L: Language>(src: &'a str) -> Parser<'a> {
+    pub fn new<'a>(src: &'a str) -> Parser<'a, L> {
         Parser {
             src,
             language_items: L::PARSE_ITEMS,
             index: 0,
+            _marker: PhantomData::default()
         }
     }
 
@@ -337,7 +340,7 @@ impl Parser<'_> {
 }
 
 /// Implementation of Iterator over Parser to allow pull-parsing of the source
-impl<'a> Iterator for Parser<'a> {
+impl<'a, L: Language> Iterator for Parser<'a, L> {
     type Item = ParseOutput<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
