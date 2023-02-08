@@ -45,7 +45,7 @@ impl Lang {
 }
 
 #[pyfunction]
-fn get_meaningful_line_indicies(lang: Lang, src: &str) -> Vec<usize> {
+fn get_meaningful_line_indices(lang: Lang, src: &str) -> Vec<usize> {
     lang.get_meaningful_line_indices(src)
 }
 
@@ -62,7 +62,7 @@ fn get_count_of_meaningful_lines(lang: Lang, src: &str) -> usize {
 /// the python module definition
 #[pymodule]
 fn pydracula(_py: Python<'_>, m: &types::PyModule) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(get_meaningful_line_indicies, m)?)?;
+    m.add_function(wrap_pyfunction!(get_meaningful_line_indices, m)?)?;
     m.add_function(wrap_pyfunction!(get_cleaned_source_code, m)?)?;
     m.add_function(wrap_pyfunction!(get_count_of_meaningful_lines, m)?)?;
     m.add_class::<Lang>()?;

@@ -1,6 +1,6 @@
-from pydracula import Lang, get_meaningful_line_indicies
+from pydracula import Lang, get_meaningful_line_indices
 
-indicies = get_meaningful_line_indicies(
+indices = get_meaningful_line_indices(
     Lang.C,
     """
             int xyz() {
