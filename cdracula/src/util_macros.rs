@@ -4,32 +4,38 @@ macro_rules! languages_supported {
         $(
             const $name: std::ffi::c_uint = $num;
         )+
-        fn get_parser(lang: std::ffi::c_uint) -> Option<fn(&str) -> dracula::parse::Parser> {
-            use dracula::parse::Language;
+        pub fn get_meaningful_line_indices_as_u64(idx: std::ffi::c_uint, src: &str) -> Option<Vec<u64>> {
             $(
-                if lang == $name {
-                    return Some(dracula::langs::$name::get_parser());
+                if idx == $num {
+                    return Some(
+                        dracula::count::get_meaningful_line_indices::<dracula::langs::$name>(src)
+                            .flatten()
+                            .map(|x| x as u64)
+                            .collect()
+                    );
                 }
             )+
             None
         }
-        fn is_meaningful(lang: std::ffi::c_uint) -> Option<fn(&dracula::parse::ParseOutput) -> bool> {
-            use dracula::parse::Language;
+        pub fn get_cleaned_source_code(idx: std::ffi::c_uint, src: &str) -> Option<String> {
             $(
-                if lang == $name {
-                    return Some(dracula::langs::$name::is_meaningful());
+                if idx == $num {
+                    return Some(
+                        dracula::count::get_cleaned_source_code::<dracula::langs::$name>(src)
+                    );
                 }
             )+
             None
         }
-        fn is_meaningful_src(lang: std::ffi::c_uint) -> Option<fn(&str) -> bool> {
-            use dracula::parse::Language;
+        pub fn get_count_of_meaningful_lines_as_u64(idx: std::ffi::c_uint, src: &str) -> Option<u64> {
             $(
-                if lang == $name {
-                    return Some(dracula::langs::$name::is_meaningful_src);
+                if idx == $num {
+                    return Some(
+                        dracula::count::get_count_of_meaningful_lines::<dracula::langs::$name>(src) as _
+                    );
                 }
             )+
             None
         }
-    };
+    }
 }

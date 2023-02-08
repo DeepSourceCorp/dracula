@@ -3,8 +3,6 @@
 #![allow(non_upper_case_globals)]
 
 mod util_macros;
-
-use dracula::parse::ParseOutput;
 use std::ffi::{self, c_char};
 
 languages_supported! {
@@ -35,32 +33,11 @@ pub unsafe fn get_meaningful_line_count(
     lang: ffi::c_uint,
     _kind: ffi::c_uint,
 ) -> ffi::c_ulonglong {
-    let Some(parser) = get_parser(lang) else {
-        return ffi::c_ulonglong::MAX
-    };
-    let Some(is_meaningful) = is_meaningful(lang) else {
-        return ffi::c_ulonglong::MAX
-    };
     let cstr = ffi::CStr::from_ptr(src);
     cstr.to_str()
-        .map(|src| {
-            let parsed = parser(src);
-            let mut line_count: usize = 0;
-            let mut stack = vec![];
-            for p in parsed {
-                if matches!(p, ParseOutput::EOL(_) | ParseOutput::EOF) {
-                    if stack.iter().any(is_meaningful) {
-                        line_count += 1;
-                    }
-                    // We clear the stack once we reach the end of a line.
-                    stack.clear();
-                } else {
-                    // we accumulate tokens we see as meaningful tokens for the language.
-                    stack.push(p);
-                }
-            }
-            line_count
-        })
+        .ok()
+        .map(|src| get_count_of_meaningful_lines_as_u64(lang, src))
+        .flatten()
         .unwrap_or_default() as _
 }
 
@@ -80,60 +57,15 @@ pub unsafe fn meaningful_lines(
     _kind: ffi::c_uint,
     r_lines_len: *mut ffi::c_ulonglong,
 ) -> *mut ffi::c_ulonglong {
-    let Some(parser) = get_parser(lang) else {
-        return std::ptr::null_mut()
-    };
-    let Some(is_meaningful) = is_meaningful(lang) else {
-        return std::ptr::null_mut()
-    };
-    let mut meaningful_lines = Vec::<ffi::c_ulonglong>::new();
     if cfg!(dbg) {
         assert!(!src.is_null());
     }
     let cstr = ffi::CStr::from_ptr(src);
-    _ = cstr.to_str().map(|src| {
-        let mut parsed = parser(src);
-        let lines = src.split_inclusive('\n').enumerate();
-        struct Span {
-            start: usize,
-            end: usize,
-        }
-        let mut line_span = Span { start: 0, end: 0 };
-        let mut parse_span = Span { start: 0, end: 0 };
-        let mut last_parsed_output = None;
-        for (idx, line) in lines {
-            // setup line start and end
-            line_span.start = line_span.end;
-            line_span.end += line.len();
-            // traverse parsed output until the span end is reached
-            let mut po_stack = if let Some(po) = last_parsed_output {
-                vec![po]
-            } else {
-                vec![]
-            };
-            while parse_span.end < line_span.end {
-                if let Some(parsed_output) = parsed.next() {
-                    // setup parsed start and end
-                    parse_span.start = parse_span.end;
-                    parse_span.end += parsed_output.len();
-                    po_stack.push(parsed_output);
-                }
-            }
-            if po_stack.iter().any(is_meaningful) {
-                meaningful_lines.push(idx as u64);
-            }
-            if cfg!(dbg) {
-                eprintln!("{} == {}", idx, po_stack.iter().any(is_meaningful));
-                eprintln!("{:?}", po_stack);
-                eprintln!("-------------------------------------------------");
-            }
-            if parse_span.end != line_span.end {
-                last_parsed_output = po_stack.pop();
-            } else {
-                last_parsed_output = None;
-            }
-        }
-    });
+    let mut meaningful_lines = cstr
+        .to_str()
+        .ok()
+        .and_then(|src| get_meaningful_line_indices_as_u64(lang, src))
+        .unwrap_or_else(|| vec![]);
     meaningful_lines.shrink_to_fit();
     if cfg!(dbg) {
         assert!(meaningful_lines.len() == meaningful_lines.capacity());
@@ -162,41 +94,12 @@ pub unsafe fn get_cleaned_src(
     _kind: ffi::c_uint,
     _exclude: ffi::c_uint,
 ) -> *mut i8 {
-    let Some(parser) = get_parser(lang) else {
-        return std::ptr::null_mut()
-    };
-    let Some(is_meaningful_src) = is_meaningful_src(lang) else {
-        return std::ptr::null_mut()
-    };
     let cstr = ffi::CStr::from_ptr(src);
     let src = cstr
         .to_str()
-        .map(|src| {
-            let parsed = parser(src);
-            let mut meaningful_src = String::default();
-            let mut stack = vec![];
-            for p in parsed {
-                if matches!(p, ParseOutput::EOL(_) | ParseOutput::EOF) {
-                    let meaningful_src_len = meaningful_src.len();
-                    for po in stack.iter() {
-                        if let ParseOutput::Source(s) = po {
-                            if is_meaningful_src(s) {
-                                meaningful_src.push_str(s);
-                            }
-                        }
-                    }
-                    if matches!(p, ParseOutput::EOL(_))
-                        && meaningful_src_len != meaningful_src.len()
-                    {
-                        meaningful_src.push('\n');
-                    }
-                    stack.clear();
-                } else {
-                    stack.push(p);
-                }
-            }
-            meaningful_src
-        })
+        .ok()
+        .map(|src| get_cleaned_source_code(lang, src))
+        .flatten()
         .unwrap_or_default();
     ffi::CString::from_vec_unchecked(src.into()).into_raw()
 }
