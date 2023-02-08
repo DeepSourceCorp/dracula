@@ -8,4 +8,4 @@ indices = get_meaningful_line_indices(
             }
             """,
 )
-assert len(indicies) == 3
+assert len(indices) == 3
