@@ -279,7 +279,7 @@ pub struct Parser<'a, L: Language> {
     src: &'a str,
     index: usize,
     language_items: &'static [ParseItem],
-    _marker: PhantomData<L>
+    _marker: PhantomData<L>,
 }
 
 // most this is only used in tests atm!
@@ -290,7 +290,7 @@ impl<L: Language> Parser<'_, L> {
             src,
             language_items: L::PARSE_ITEMS,
             index: 0,
-            _marker: PhantomData::default()
+            _marker: PhantomData::default(),
         }
     }
 
@@ -304,35 +304,40 @@ impl<L: Language> Parser<'_, L> {
             .find_map(|i| Some((i, items[i].begin().matches(src)?)))
             .and_then(|(i, matches)| {
                 (matches[2].end..src.len()).find_map(|b| {
-                    Some((
-                        i,
-                        b,
-                        if items[i].is_key_matched() {
-                            items[i].end().matches_with_key(
-                                &src[b..],
-                                &src[matches[1].start..matches[1].end],
-                            )?
-                        } else {
-                            items[i].end().matches(&src[b..])?
-                        },
-                    ))
+                    if src.is_char_boundary(b) {
+                        Some((
+                            i,
+                            b,
+                            if items[i].is_key_matched() {
+                                items[i].end().matches_with_key(
+                                    &src[b..],
+                                    &src[matches[1].start..matches[1].end],
+                                )?
+                            } else {
+                                items[i].end().matches(&src[b..])?
+                            },
+                        ))
+                    } else {
+                        None
+                    }
                 })
             })
         {
-            Ok(items[i].to_parse_output(&src[0..b + end_matches[2].end]))
+            Ok(items[i].to_parse_output(&src[..b + end_matches[2].end]))
         } else if let Some(end) = (1..=src.len()).find(|&idx| {
-            idx == src.len()
-                || src[idx..].starts_with('\n')
-                || items
-                    .iter()
-                    .find_map(|i| i.begin().matches(&src[idx..]))
-                    .is_some()
+            src.is_char_boundary(idx)
+                && (idx == src.len()
+                    || src[idx..].starts_with('\n')
+                    || items
+                        .iter()
+                        .find_map(|i| i.begin().matches(&src[idx..]))
+                        .is_some())
         }) {
             // if it's not a range then it's a source line
             if end == 0 {
                 Err("Failed to parse, for some random reason, pls lookie here")?;
             }
-            Ok(ParseOutput::Source(&src[0..end]))
+            Ok(ParseOutput::Source(&src[..end]))
         } else {
             Err("Failed to parse the rest.")?
         }

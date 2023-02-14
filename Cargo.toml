@@ -7,7 +7,7 @@ members = [
 [package]
 name = "dracula"
 description = "🧛 Count-ing lines, AH AH AHH!"
-version = "0.1.0"
+version = "0.1.2"
 authors = ["Swarnim Arun <swarnim@deepsource.io>"]
 edition = "2021"
 license-file = "LICENSE"

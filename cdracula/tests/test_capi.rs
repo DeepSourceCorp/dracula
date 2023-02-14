@@ -37,6 +37,9 @@ mod python {
             let src = CString::from_vec_unchecked(
                 (String::from(
                     r#"
+# entp için anayzer
+if index == 10:
+    pass
 # skip this
 def python():
     """
@@ -47,7 +50,7 @@ def python():
                 ) + "\0")
                     .into(),
             );
-            assert_eq!(get_meaningful_line_count(src.as_ptr(), PYTHON_LANG, 0), 2);
+            assert_eq!(get_meaningful_line_count(src.as_ptr(), PYTHON_LANG, 0), 4);
         }
     }
 

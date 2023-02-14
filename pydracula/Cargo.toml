@@ -1,6 +1,6 @@
 [package]
 name = "pydracula"
-version = "0.1.0"
+version = "0.1.2"
 authors = ["Swarnim Arun <swarnimarun11@gmail.com>"]
 edition = "2018"
 
