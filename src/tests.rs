@@ -39,7 +39,10 @@ mod simple_python {
     #[test]
     fn try_parse() {
         let parsed = Parser::<Python>::new(
-            r#"# some top level comments
+            r#"# entp için anayzer
+            if index == 10:
+                pass
+            # some top level comments
             def main():
                 print("s");"""
                 Multi-line Comments
@@ -53,6 +56,7 @@ mod simple_python {
         let mut line_count: usize = 0;
         let mut stack = vec![];
         for p in parsed {
+            eprintln!("{:?}", p);
             if matches!(p, ParseOutput::EOL(_) | ParseOutput::EOF) {
                 if stack.iter().any(|i| match i {
                     ParseOutput::Source(s) => Python::is_meaningful_src(s),
@@ -65,7 +69,7 @@ mod simple_python {
                 stack.push(p);
             }
         }
-        assert_eq!(line_count, 3)
+        assert_eq!(line_count, 5)
     }
 }
 

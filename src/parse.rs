@@ -279,7 +279,7 @@ pub struct Parser<'a, L: Language> {
     src: &'a str,
     index: usize,
     language_items: &'static [ParseItem],
-    _marker: PhantomData<L>
+    _marker: PhantomData<L>,
 }
 
 // most this is only used in tests atm!
@@ -290,7 +290,7 @@ impl<L: Language> Parser<'_, L> {
             src,
             language_items: L::PARSE_ITEMS,
             index: 0,
-            _marker: PhantomData::default()
+            _marker: PhantomData::default(),
         }
     }
 
@@ -304,18 +304,22 @@ impl<L: Language> Parser<'_, L> {
             .find_map(|i| Some((i, items[i].begin().matches(src)?)))
             .and_then(|(i, matches)| {
                 (matches[2].end..src.len()).find_map(|b| {
-                    Some((
-                        i,
-                        b,
-                        if items[i].is_key_matched() {
-                            items[i].end().matches_with_key(
-                                &src[b..],
-                                &src[matches[1].start..matches[1].end],
-                            )?
-                        } else {
-                            items[i].end().matches(&src[b..])?
-                        },
-                    ))
+                    if src.is_char_boundary(b) {
+                        Some((
+                            i,
+                            b,
+                            if items[i].is_key_matched() {
+                                items[i].end().matches_with_key(
+                                    &src[b..],
+                                    &src[matches[1].start..matches[1].end],
+                                )?
+                            } else {
+                                items[i].end().matches(&src[b..])?
+                            },
+                        ))
+                    } else {
+                        None
+                    }
                 })
             })
         {
