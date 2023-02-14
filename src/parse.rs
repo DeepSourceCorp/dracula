@@ -11,13 +11,6 @@ pub struct Span {
 }
 
 impl Span {
-    // TODO: don't think this is useful, but let's see
-    // pub fn start(&self) -> usize {
-    //     self.start
-    // }
-    // pub fn end(&self) -> usize {
-    //     self.end
-    // }
     pub fn new(start: usize, end: usize) -> Self {
         Self { start, end }
     }
@@ -218,6 +211,12 @@ impl ParseItem {
             Self::Escaped(pi) | Self::UnEscaped(pi) => pi.to_parse_output(src),
         }
     }
+    pub fn is_escaped(&self) -> bool {
+        match self {
+            ParseItem::Escaped(_) => true,
+            _ => false,
+        }
+    }
 }
 
 // Most of this is manually implemented elsewhere
@@ -303,8 +302,13 @@ impl<L: Language> Parser<'_, L> {
         } else if let Some((i, b, end_matches)) = (0..items.len())
             .find_map(|i| Some((i, items[i].begin().matches(src)?)))
             .and_then(|(i, matches)| {
+                let mut escape = false;
                 (matches[2].end..src.len()).find_map(|b| {
-                    if src.is_char_boundary(b) {
+                    if src.is_char_boundary(b) && !escape {
+                        if items[i].is_escaped() && src[b..].starts_with('\\') {
+                            escape = true;
+                            return None;
+                        }
                         Some((
                             i,
                             b,
@@ -318,6 +322,9 @@ impl<L: Language> Parser<'_, L> {
                             },
                         ))
                     } else {
+                        if escape {
+                            escape = false;
+                        }
                         None
                     }
                 })

@@ -33,6 +33,7 @@ mod simple_c {
 
 #[cfg(test)]
 mod simple_python {
+    use crate::count;
     use crate::parse::*;
     use crate::langs::*;
 
@@ -41,10 +42,13 @@ mod simple_python {
         let parsed = Parser::<Python>::new(
             r#"# entp için anayzer
             if index == 10:
+                " \
+                "
+                "\""
                 pass
             # some top level comments
             def main():
-                print("s");"""
+                print("s");"""\""""""
                 Multi-line Comments
                 """
                 print(x)

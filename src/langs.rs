@@ -3,19 +3,45 @@ use crate::parse::*;
 pub struct Java;
 impl Language for Java {
     const PARSE_ITEMS: &'static [ParseItem] = &[
-        ParseItem::Comment(ItemRange::fixed_start("//").pre_fixed_end("\n"), false),
-        ParseItem::Comment(ItemRange::fixed_start("/*").fixed_end("*/"), false),
-        ParseItem::String(ItemRange::fixed_start("\"\"\"").fixed_end("\"\"\""), false),
-        ParseItem::String(ItemRange::fixed_start("\"").fixed_end("\""), false),
+        ParseItem::Escaped(&ParseItem::Comment(
+            ItemRange::fixed_start("//").pre_fixed_end("\n"),
+            false,
+        )),
+        ParseItem::UnEscaped(&ParseItem::Comment(
+            ItemRange::fixed_start("/*").fixed_end("*/"),
+            false,
+        )),
+        ParseItem::Escaped(&ParseItem::String(
+            ItemRange::fixed_start("\"\"\"").fixed_end("\"\"\""),
+            false,
+        )),
+        ParseItem::UnEscaped(&ParseItem::String(
+            ItemRange::fixed_start("\"").fixed_end("\""),
+            false,
+        )),
     ];
+    fn is_meaningful_src(src: &str) -> bool {
+        !src.chars().all(|ch| {
+            char::is_whitespace(ch) || ch == '}' || ch == '{'
+        })
+    }
 }
 
 pub struct C;
 impl Language for C {
     const PARSE_ITEMS: &'static [ParseItem] = &[
-        ParseItem::Comment(ItemRange::fixed_start("//").pre_fixed_end("\n"), false),
-        ParseItem::Comment(ItemRange::fixed_start("/*").fixed_end("*/"), false),
-        ParseItem::String(ItemRange::fixed_start("\"").fixed_end("\""), false),
+        ParseItem::Escaped(&ParseItem::Comment(
+            ItemRange::fixed_start("//").pre_fixed_end("\n"),
+            false,
+        )),
+        ParseItem::UnEscaped(&ParseItem::Comment(
+            ItemRange::fixed_start("/*").fixed_end("*/"),
+            false,
+        )),
+        ParseItem::Escaped(&ParseItem::String(
+            ItemRange::fixed_start("\"").fixed_end("\""),
+            false,
+        )),
         ParseItem::UnEscaped(&ParseItem::String(
             ItemRange::start_matcher(
                 Matcher::Exact("R\""),
@@ -30,14 +56,28 @@ impl Language for C {
             true,
         )), // R"UNIQUE_KEY( RAW STRING )UNIQUE_KEY"
     ];
+    fn is_meaningful_src(src: &str) -> bool {
+        !src.chars().all(|ch| {
+            char::is_whitespace(ch) || ch == '}' || ch == '{'
+        })
+    }    
 }
 
 pub struct Rust;
 impl Language for Rust {
     const PARSE_ITEMS: &'static [ParseItem] = &[
-        ParseItem::Comment(ItemRange::fixed_start("//").pre_fixed_end("\n"), false),
-        ParseItem::Comment(ItemRange::fixed_start("/*").fixed_end("*/"), false),
-        ParseItem::String(ItemRange::fixed_start(r#"""#).fixed_end(r#"""#), false),
+        ParseItem::UnEscaped(&ParseItem::Comment(
+            ItemRange::fixed_start("//").pre_fixed_end("\n"),
+            false,
+        )),
+        ParseItem::UnEscaped(&ParseItem::Comment(
+            ItemRange::fixed_start("/*").fixed_end("*/"),
+            false,
+        )),
+        ParseItem::Escaped(&ParseItem::String(
+            ItemRange::fixed_start(r#"""#).fixed_end(r#"""#),
+            false,
+        )),
         ParseItem::UnEscaped(&ParseItem::String(
             ItemRange::start_matcher(
                 Matcher::Exact(r#"r"#),
@@ -48,13 +88,27 @@ impl Language for Rust {
             true,
         )),
     ];
+    fn is_meaningful_src(src: &str) -> bool {
+        !src.chars().all(|ch| {
+            char::is_whitespace(ch) || ch == '}' || ch == '{'
+        })
+    }
 }
 
 pub struct Python;
 impl Language for Python {
     const PARSE_ITEMS: &'static [ParseItem] = &[
-        ParseItem::Comment(ItemRange::fixed_start("\"\"\"").fixed_end("\"\"\""), false),
-        ParseItem::Comment(ItemRange::fixed_start("#").pre_fixed_end("\n"), false),
-        ParseItem::String(ItemRange::fixed_start("\"").fixed_end("\""), false),
+        ParseItem::UnEscaped(&ParseItem::Comment(
+            ItemRange::fixed_start("\"\"\"").fixed_end("\"\"\""),
+            false,
+        )),
+        ParseItem::UnEscaped(&ParseItem::Comment(
+            ItemRange::fixed_start("#").pre_fixed_end("\n"),
+            false,
+        )),
+        ParseItem::Escaped(&ParseItem::String(
+            ItemRange::fixed_start("\"").fixed_end("\""),
+            false,
+        )),
     ];
 }
