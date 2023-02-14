@@ -90,10 +90,11 @@ mod simple_rust {
             // the platform to be present.
             fn main() {
                 let c = 2;
-                /* Multi-Line Comments
+                /* Multi-Line Comments यह काम करना चाहिए
                  seems to work as well */
-                 let src = "hello, World!";
-                 let src2 = r#"hello, World!"#;
+                 let यह = "hello, World!";
+                 let src = "Gello, World!";
+                 let src2 = r#"यह, काम!"#;
                  return 0;
             }
         "##,
