@@ -80,6 +80,8 @@ impl<'a, L: Language> Iterator for ParseLineMeaningfulIndexIter<'a, L> {
     }
 }
 
+/// Builds the iterator [`ParseLineMeaningfulIndexIter`] to run over lines of src while
+/// figuring out meaningful lines from it
 pub fn get_meaningful_line_indices<L: Language + 'static>(
     src: &str,
 ) -> ParseLineMeaningfulIndexIter<L> {
@@ -95,12 +97,14 @@ pub fn get_meaningful_line_indices<L: Language + 'static>(
     }
 }
 
+/// Uses the [`Parser`] to try and figure out the parts of the source
+/// that are meaningful
 pub fn get_cleaned_source_code<L: Language>(src: &str) -> String {
     let parsed = L::get_parser(src);
     let mut meaningful_src = String::default();
     let mut stack = vec![];
     for p in parsed {
-        if matches!(p, ParseOutput::Invalid(_)) {
+        if matches!(p, ParseOutput::Invalid(..)) {
             return src.to_string();
         }
         if matches!(p, ParseOutput::EOL(_) | ParseOutput::EOF) {
@@ -123,63 +127,37 @@ pub fn get_cleaned_source_code<L: Language>(src: &str) -> String {
     meaningful_src
 }
 
+/// Uses the [`get_meaningful_line_indices`] function to build an iterator
+/// and count all meaningful lines
 pub fn get_count_of_meaningful_lines<L: Language + 'static>(src: &str) -> usize {
     get_meaningful_line_indices::<L>(src).flatten().count()
 }
 
-#[test]
-fn test_halting_get_count_of_meaningful_lines() {
-    get_count_of_meaningful_lines::<crate::langs::C>("");
-    get_count_of_meaningful_lines::<crate::langs::Rust>("");
-    get_count_of_meaningful_lines::<crate::langs::Python>("");
-    get_count_of_meaningful_lines::<crate::langs::Java>("");
-}
+/// No halting tests for [`get_count_of_meaningful_lines`] as it uses
+/// Iterator provided by [`get_meaningful_line_indices`]
+#[cfg(test)]
+mod halting_tests_count_api {
+    #[test]
+    fn test_halting_get_cleaned_source_code() {
+        get_cleaned_source_code::<crate::langs::C>("\nint main() {}\n");
+        get_cleaned_source_code::<crate::langs::Rust>("\nfn main() {}\n");
+        get_cleaned_source_code::<crate::langs::Python>("\ndef main():\n\tpass");
+        get_cleaned_source_code::<crate::langs::Java>("\nvoid main() {}\n");
+    }
 
-#[test]
-fn test_halting_get_cleaned_source_code() {
-    get_cleaned_source_code::<crate::langs::C>("");
-    get_cleaned_source_code::<crate::langs::Rust>("");
-    println!(
-        "{}",
-        get_cleaned_source_code::<crate::langs::Python>(
-            r#"
-# entp için anayzer
-if index == 10:
-    " \
-    "
-    "\""
-    pass
-# some top level comments
-def main():
-    print("s");"""\""""""
-    Multi-line Comments
-    """
-    print(x)
-    """
-    Multi-line Comments
-    """
-    "#
-        )
-    );
-    get_cleaned_source_code::<crate::langs::Java>("");
-}
-
-#[test]
-fn test_halting_get_meaningful_line_indices() {
-    get_meaningful_line_indices::<crate::langs::C>(
-        "
-    int main() {}
-    ",
-    )
-    .flatten()
-    .for_each(|_| ());
-    get_meaningful_line_indices::<crate::langs::Rust>("")
-        .flatten()
-        .for_each(|_| ());
-    get_meaningful_line_indices::<crate::langs::Python>("")
-        .flatten()
-        .for_each(|_| ());
-    get_meaningful_line_indices::<crate::langs::Java>("")
-        .flatten()
-        .for_each(|_| ());
+    #[test]
+    fn test_halting_get_meaningful_line_indices() {
+        get_meaningful_line_indices::<crate::langs::C>("\nint main() {}\n")
+            .flatten()
+            .for_each(|_| ());
+        get_meaningful_line_indices::<crate::langs::Rust>("")
+            .flatten()
+            .for_each(|_| ());
+        get_meaningful_line_indices::<crate::langs::Python>("")
+            .flatten()
+            .for_each(|_| ());
+        get_meaningful_line_indices::<crate::langs::Java>("")
+            .flatten()
+            .for_each(|_| ());
+    }
 }

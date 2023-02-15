@@ -1,21 +1,28 @@
 use crate::parse::*;
 
+/// Java syntax doesn't have escaped ranges other
+/// than simple string
 pub struct Java;
 impl Language for Java {
     const PARSE_ITEMS: &'static [ParseItem] = &[
-        ParseItem::Escaped(&ParseItem::Comment(
+        // single line comment
+        ParseItem::UnEscaped(&ParseItem::Comment(
             ItemRange::fixed_start("//").pre_fixed_end("\n"),
             false,
         )),
+        // multi-line comment
         ParseItem::UnEscaped(&ParseItem::Comment(
             ItemRange::fixed_start("/*").fixed_end("*/"),
             false,
         )),
-        ParseItem::Escaped(&ParseItem::String(
+        // multi-line string (defined above simple string as
+        // parsing this has precedence over simple string(`".*"`))
+        ParseItem::UnEscaped(&ParseItem::String(
             ItemRange::fixed_start("\"\"\"").fixed_end("\"\"\""),
             false,
         )),
-        ParseItem::UnEscaped(&ParseItem::String(
+        // simple string
+        ParseItem::Escaped(&ParseItem::String(
             ItemRange::fixed_start("\"").fixed_end("\""),
             false,
         )),
@@ -27,21 +34,26 @@ impl Language for Java {
     }
 }
 
+/// C supports escapes in single line comments as well
 pub struct C;
 impl Language for C {
     const PARSE_ITEMS: &'static [ParseItem] = &[
+        // single line comment
         ParseItem::Escaped(&ParseItem::Comment(
             ItemRange::fixed_start("//").pre_fixed_end("\n"),
             false,
         )),
+        // multiline line comment
         ParseItem::UnEscaped(&ParseItem::Comment(
             ItemRange::fixed_start("/*").fixed_end("*/"),
             false,
         )),
+        // simple string
         ParseItem::Escaped(&ParseItem::String(
             ItemRange::fixed_start("\"").fixed_end("\""),
             false,
         )),
+        // raw string comment
         ParseItem::UnEscaped(&ParseItem::String(
             ItemRange::start_matcher(
                 Matcher::Exact("R\""),
@@ -63,6 +75,8 @@ impl Language for C {
     }    
 }
 
+/// Rust needs to define keyedness for Raw Strings
+/// as they are delimited by specific `#` count
 pub struct Rust;
 impl Language for Rust {
     const PARSE_ITEMS: &'static [ParseItem] = &[
@@ -92,6 +106,7 @@ impl Language for Rust {
             true,
         )),
     ];
+
     fn is_meaningful_src(src: &str) -> bool {
         !src.chars().all(|ch| {
             char::is_whitespace(ch) || ch == '}' || ch == '{'

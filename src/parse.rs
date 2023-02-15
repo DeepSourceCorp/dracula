@@ -197,9 +197,9 @@ impl ParseItem {
             Self::Escaped(item) | Self::UnEscaped(item) => item.end(),
         }
     }
-    pub fn is_key_matched(&self) -> bool {
+    pub fn is_keyed(&self) -> bool {
         match self {
-            Self::Escaped(k) | Self::UnEscaped(k) => k.is_key_matched(),
+            Self::Escaped(k) | Self::UnEscaped(k) => k.is_keyed(),
             Self::String(_, true) | Self::Comment(_, true) => true,
             _ => false,
         }
@@ -219,27 +219,12 @@ impl ParseItem {
     }
 }
 
-// Most of this is manually implemented elsewhere
-// impl ParseItem {
-//     // pub fn begin_match(&self, src: &str) -> Option<Matches> {
-//     //     self.begin().matches(src)
-//     // }
-//     // pub fn till_end_match(&self, src: &str) -> Option<usize> {
-//     //     (0..src.len().min(25600)).find_map(|x| {
-//     //         self.end()
-//     //             .matches(&src[x..])
-//     //             .and_then(|x| x.last().copied())
-//     //             .map(|x| x.end)
-//     //     })
-//     // }
-// }
-
 #[derive(Debug, Clone, Copy)]
 pub enum ParseOutput<'a> {
     Comment(&'a str),
     String(&'a str),
     Source(&'a str),
-    Invalid(&'a str),
+    Invalid(usize, usize),
     EOL(&'a str),
     EOF,
 }
@@ -255,7 +240,7 @@ impl ParseOutput<'_> {
         match self {
             Self::Comment(s) | Self::String(s) | Self::Source(s) => s.len(),
             Self::EOL(_) => 1,
-            Self::Invalid(_) | Self::EOF => 0,
+            Self::Invalid(..) | Self::EOF => 0,
         }
     }
 }
@@ -295,7 +280,7 @@ impl<L: Language> Parser<'_, L> {
 
     /// Try to parse as per the given grammar.
     /// This function will return an error if parsing as the given grammar fails
-    pub fn parse<'a>(&self, src: &'a str) -> Result<ParseOutput<'a>, String> {
+    fn parse_next<'a>(&self, src: &'a str) -> Result<ParseOutput<'a>, String> {
         let items = self.language_items;
         if src.starts_with('\n') {
             Ok(ParseOutput::EOL(&src[..1]))
@@ -312,7 +297,7 @@ impl<L: Language> Parser<'_, L> {
                         Some((
                             i,
                             b,
-                            if items[i].is_key_matched() {
+                            if items[i].is_keyed() {
                                 items[i].end().matches_with_key(
                                     &src[b..],
                                     &src[matches[1].start..matches[1].end],
@@ -362,10 +347,10 @@ impl<'a, L: Language> Iterator for Parser<'a, L> {
             self.index = self.src.len() + 1;
             Some(ParseOutput::EOF)
         } else {
-            let parse_output = self.parse(&self.src[self.index..]);
+            let parse_output = self.parse_next(&self.src[self.index..]);
             self.index += parse_output.as_ref().map(|x| x.len()).unwrap_or_default();
             Some(parse_output.unwrap_or_else(|_| {
-                let x = ParseOutput::Invalid(&self.src[self.index..]);
+                let x = ParseOutput::Invalid(self.index, self.src.len());
                 self.index = self.src.len();
                 x
             }))
