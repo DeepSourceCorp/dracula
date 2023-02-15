@@ -123,26 +123,8 @@ pub fn get_cleaned_source_code<L: Language>(src: &str) -> String {
     meaningful_src
 }
 
-pub fn get_count_of_meaningful_lines<L: Language>(src: &str) -> usize {
-    let parsed = L::get_parser(src);
-    let mut line_count: usize = 0;
-    let mut stack = vec![];
-    for p in parsed {
-        if matches!(p, ParseOutput::Invalid(_)) {
-            return src.lines().count();
-        }
-        if matches!(p, ParseOutput::EOL(_) | ParseOutput::EOF) {
-            if stack.iter().any(L::is_meaningful) {
-                line_count += 1;
-            }
-            // We clear the stack once we reach the end of a line.
-            stack.clear();
-        } else {
-            // we accumulate tokens we see as meaningful tokens for the language.
-            stack.push(p);
-        }
-    }
-    line_count
+pub fn get_count_of_meaningful_lines<L: Language + 'static>(src: &str) -> usize {
+    get_meaningful_line_indices::<L>(src).flatten().count()
 }
 
 #[test]

@@ -78,6 +78,10 @@ impl Language for Rust {
             ItemRange::fixed_start(r#"""#).fixed_end(r#"""#),
             false,
         )),
+        ParseItem::Escaped(&ParseItem::String(
+            ItemRange::fixed_start(r#"b""#).fixed_end(r#"""#),
+            false,
+        )),
         ParseItem::UnEscaped(&ParseItem::String(
             ItemRange::start_matcher(
                 Matcher::Exact(r#"r"#),
