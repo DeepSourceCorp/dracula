@@ -154,6 +154,10 @@ mod simple_rust {
             "./src/parse.rs",
             "./src/tests.rs",
             "./src/remove_non_meaningful.rs",
+            "./cdracula/src/lib.rs",
+            "./cdracula/src/util_macros.rs",
+            "./cdracula/tests/test_capi.rs",
+            "./pydracula/src/lib.rs"
         ];
         src_files
             .into_iter()
