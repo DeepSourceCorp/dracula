@@ -25,7 +25,7 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "cdracula"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "dracula",
 ]
@@ -68,7 +68,7 @@ dependencies = [
 
 [[package]]
 name = "dracula"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "log",
  "ra_ap_syntax",
@@ -228,7 +228,7 @@ dependencies = [
 
 [[package]]
 name = "pydracula"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "dracula",
  "pyo3",

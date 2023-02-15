@@ -4,18 +4,24 @@ members = [
     "pydracula"
 ]
 
-[package]
-name = "dracula"
-description = "🧛 Count-ing lines, AH AH AHH!"
-version = "0.1.2"
-authors = ["Swarnim Arun <swarnim@deepsource.io>"]
+[workspace.package]
 edition = "2021"
+description = "🧛 Count-ing lines, AH AH AHH!"
+version = "0.1.3"
+authors = ["Swarnim Arun <swarnim@deepsource.io>"]
 license-file = "LICENSE"
 documentation = "https://docs.rs/dracula"
 homepage = "https://github.com/deepsourcelabs/dracula"
 repository = "https://github.com/deepsourcelabs/dracula"
 keywords = ["parsing", "line-count"]
 categories = ["command-line-utilities", "text-processing"]
+
+
+[package]
+name = "dracula"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

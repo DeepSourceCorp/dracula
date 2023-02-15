@@ -1,9 +1,8 @@
 [package]
 name = "cdracula"
-description = "🧛 Count-ing lines, AH AH AHH!"
-version = "0.1.2"
-authors = ["Swarnim Arun <swarnim@deepsource.io>"]
-edition = "2021"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
