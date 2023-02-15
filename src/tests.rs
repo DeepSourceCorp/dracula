@@ -157,7 +157,8 @@ mod simple_rust {
             "./cdracula/src/lib.rs",
             "./cdracula/src/util_macros.rs",
             "./cdracula/tests/test_capi.rs",
-            "./pydracula/src/lib.rs"
+            "./pydracula/src/lib.rs",
+            "./src/fixtures/rust_tests.rs"
         ];
         src_files
             .into_iter()
