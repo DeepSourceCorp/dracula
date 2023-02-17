@@ -1,6 +1,7 @@
 [package]
 name = "cdracula"
 version.workspace = true
+description.workspace = true
 authors.workspace = true
 edition.workspace = true
 
