@@ -24,6 +24,7 @@ impl<'a, L: Language> Iterator for ParseLineMeaningfulIndexIter<'a, L> {
     type Item = Option<usize>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        // Self::Item is Option<usize> to signify that a line may also not be meaningful.
         if self.failed {
             let li = self.line_index;
             if li > self.max_lines {
