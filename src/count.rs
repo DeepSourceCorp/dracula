@@ -138,6 +138,8 @@ pub fn get_count_of_meaningful_lines<L: Language + 'static>(src: &str) -> usize 
 /// Iterator provided by [`get_meaningful_line_indices`]
 #[cfg(test)]
 mod halting_tests_count_api {
+    use super::*;
+
     #[test]
     fn test_halting_get_cleaned_source_code() {
         get_cleaned_source_code::<crate::langs::C>("\nint main() {}\n");

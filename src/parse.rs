@@ -52,13 +52,7 @@ impl Matcher {
                 while src[i..].starts_with(s) {
                     i += s.len();
                 }
-                // if atleast 1 occurence
-                if i > 0 {
-                    Some(&src[..i])
-                } else {
-                    // else no match
-                    None
-                }
+                Some(&src[..i])
             }
             Matcher::AnyAlphaNumeric => src
                 .char_indices()

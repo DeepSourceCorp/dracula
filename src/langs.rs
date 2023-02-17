@@ -61,9 +61,9 @@ impl Language for C {
                 Matcher::Exact("("),
             )
             .end_matcher(
-                Matcher::Exact(r#")"#),
+                Matcher::Exact(")"),
                 Matcher::AnyAlphaNumeric,
-                Matcher::Exact(r#"""#),
+                Matcher::Exact("\""),
             ),
             true,
         )), // R"UNIQUE_KEY( RAW STRING )UNIQUE_KEY"
@@ -89,18 +89,18 @@ impl Language for Rust {
             false,
         )),
         ParseItem::Escaped(&ParseItem::String(
-            ItemRange::fixed_start(r#"""#).fixed_end(r#"""#),
+            ItemRange::fixed_start("\"").fixed_end("\""),
             false,
         )),
         ParseItem::Escaped(&ParseItem::String(
-            ItemRange::fixed_start(r#"b""#).fixed_end(r#"""#),
+            ItemRange::fixed_start("b\"").fixed_end("\""),
             false,
         )),
         ParseItem::UnEscaped(&ParseItem::String(
             ItemRange::start_matcher(
-                Matcher::Exact(r#"r"#),
+                Matcher::Exact("r"),
                 Matcher::Repeat("#"),
-                Matcher::Exact(r#"""#),
+                Matcher::Exact("\""),
             )
             .end_matcher(Matcher::Exact(r#"""#), Matcher::Repeat("#"), Matcher::Any),
             true,
