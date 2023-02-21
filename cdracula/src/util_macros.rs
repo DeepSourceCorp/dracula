@@ -21,7 +21,7 @@ macro_rules! languages_supported {
             $(
                 if idx == $num {
                     return Some(
-                        dracula::count::get_cleaned_source_code::<dracula::langs::$name>(src)
+                        dracula::count::get_cleaned_source_code::<dracula::langs::$name>(src).unwrap_or_else(|| src.to_string())
                     );
                 }
             )+

@@ -15,13 +15,24 @@ pub struct ParseLineMeaningfulIndexIter<'a, L: Language> {
     line_span: Span,
     parse_span: Span,
     line_index: usize,
+    max_lines: usize,
     last_parsed_output: Option<ParseOutput<'a>>,
+    failed: bool,
 }
 
 impl<'a, L: Language> Iterator for ParseLineMeaningfulIndexIter<'a, L> {
     type Item = Option<usize>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        // Self::Item is Option<usize> to signify that a line may also not be meaningful.
+        if self.failed {
+            let li = self.line_index;
+            if li > self.max_lines {
+                return None;
+            } else {
+                return Some(Some(li));
+            }
+        }
         if self.line_span.end >= self.src.len() {
             return None;
         }
@@ -70,6 +81,8 @@ impl<'a, L: Language> Iterator for ParseLineMeaningfulIndexIter<'a, L> {
     }
 }
 
+/// Builds the iterator [`ParseLineMeaningfulIndexIter`] to run over lines of src while
+/// figuring out meaningful lines from it
 pub fn get_meaningful_line_indices<L: Language + 'static>(
     src: &str,
 ) -> ParseLineMeaningfulIndexIter<L> {
@@ -80,14 +93,20 @@ pub fn get_meaningful_line_indices<L: Language + 'static>(
         parse_span: Span::default(),
         line_index: 0,
         last_parsed_output: None,
+        failed: false,
+        max_lines: src.lines().count(),
     }
 }
 
-pub fn get_cleaned_source_code<L: Language>(src: &str) -> String {
+/// Uses the [`Parser`] to try and figure out the meaningful parts of the source
+pub fn get_cleaned_source_code<L: Language>(src: &str) -> Option<String> {
     let parsed = L::get_parser(src);
     let mut meaningful_src = String::default();
     let mut stack = vec![];
     for p in parsed {
+        if matches!(p, ParseOutput::Invalid(..)) {
+            return None;
+        }
         if matches!(p, ParseOutput::EOL(_) | ParseOutput::EOF) {
             let meaningful_src_len = meaningful_src.len();
             for po in stack.iter() {
@@ -97,9 +116,7 @@ pub fn get_cleaned_source_code<L: Language>(src: &str) -> String {
                     }
                 }
             }
-            if matches!(p, ParseOutput::EOL(_))
-                && meaningful_src_len != meaningful_src.len()
-            {
+            if matches!(p, ParseOutput::EOL(_)) && meaningful_src_len != meaningful_src.len() {
                 meaningful_src.push('\n');
             }
             stack.clear();
@@ -107,51 +124,42 @@ pub fn get_cleaned_source_code<L: Language>(src: &str) -> String {
             stack.push(p);
         }
     }
-    meaningful_src
+    Some(meaningful_src)
 }
 
-pub fn get_count_of_meaningful_lines<L: Language>(src: &str) -> usize {
-    let parsed = L::get_parser(src);
-    let mut line_count: usize = 0;
-    let mut stack = vec![];
-    for p in parsed {
-        if matches!(p, ParseOutput::EOL(_) | ParseOutput::EOF) {
-            if stack.iter().any(L::is_meaningful) {
-                line_count += 1;
-            }
-            // We clear the stack once we reach the end of a line.
-            stack.clear();
-        } else {
-            // we accumulate tokens we see as meaningful tokens for the language.
-            stack.push(p);
-        }
+/// Uses the [`get_meaningful_line_indices`] function to build an iterator
+/// and count all meaningful lines
+pub fn get_count_of_meaningful_lines<L: Language + 'static>(src: &str) -> usize {
+    get_meaningful_line_indices::<L>(src).flatten().count()
+}
+
+/// No halting tests for [`get_count_of_meaningful_lines`] as it uses
+/// Iterator provided by [`get_meaningful_line_indices`]
+#[cfg(test)]
+mod halting_tests_count_api {
+    use super::*;
+
+    #[test]
+    fn test_halting_get_cleaned_source_code() {
+        get_cleaned_source_code::<crate::langs::C>("\nint main() {}\n");
+        get_cleaned_source_code::<crate::langs::Rust>("\nfn main() {}\n");
+        get_cleaned_source_code::<crate::langs::Python>("\ndef main():\n\tpass");
+        get_cleaned_source_code::<crate::langs::Java>("\nvoid main() {}\n");
     }
-    line_count
-}
 
-#[test]
-fn test_halting_get_count_of_meaningful_lines() {
-    get_count_of_meaningful_lines::<crate::langs::C>("");
-    get_count_of_meaningful_lines::<crate::langs::Rust>("");
-    get_count_of_meaningful_lines::<crate::langs::Python>("");
-    get_count_of_meaningful_lines::<crate::langs::Java>("");
+    #[test]
+    fn test_halting_get_meaningful_line_indices() {
+        get_meaningful_line_indices::<crate::langs::C>("\nint main() {}\n")
+            .flatten()
+            .for_each(|_| ());
+        get_meaningful_line_indices::<crate::langs::Rust>("")
+            .flatten()
+            .for_each(|_| ());
+        get_meaningful_line_indices::<crate::langs::Python>("")
+            .flatten()
+            .for_each(|_| ());
+        get_meaningful_line_indices::<crate::langs::Java>("")
+            .flatten()
+            .for_each(|_| ());
+    }
 }
-
-#[test]
-fn test_halting_get_cleaned_source_code() {
-    get_cleaned_source_code::<crate::langs::C>("");
-    get_cleaned_source_code::<crate::langs::Rust>("");
-    get_cleaned_source_code::<crate::langs::Python>("");
-    get_cleaned_source_code::<crate::langs::Java>("");
-}
-
-#[test]
-fn test_halting_get_meaningful_line_indices() {
-    get_meaningful_line_indices::<crate::langs::C>("
-    int main() {}
-    ").flatten().for_each(|_| ());
-    get_meaningful_line_indices::<crate::langs::Rust>("").flatten().for_each(|_| ());
-    get_meaningful_line_indices::<crate::langs::Python>("").flatten().for_each(|_| ());
-    get_meaningful_line_indices::<crate::langs::Java>("").flatten().for_each(|_| ());
-}
-

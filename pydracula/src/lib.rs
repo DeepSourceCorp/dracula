@@ -22,14 +22,27 @@ impl Lang {
             Lang::Java => get_meaningful_line_indices::<Java>(src).flatten().collect(),
         }
     }
+    #[rustfmt::skip]
     fn get_cleaned_source_code(&self, src: &str) -> String {
         use dracula::count::*;
         use dracula::langs::*;
         match self {
-            Lang::Python => get_cleaned_source_code::<Python>(src),
-            Lang::Rust => get_cleaned_source_code::<Rust>(src),
-            Lang::C => get_cleaned_source_code::<C>(src),
-            Lang::Java => get_cleaned_source_code::<Java>(src),
+            Lang::Python => {
+                get_cleaned_source_code::<Python>(src)
+                    .unwrap_or_else(|| src.to_string())
+            }
+            Lang::Rust => {
+                get_cleaned_source_code::<Rust>(src)
+                    .unwrap_or_else(|| src.to_string())
+            },
+            Lang::C => {
+                get_cleaned_source_code::<C>(src)
+                    .unwrap_or_else(|| src.to_string())
+            },
+            Lang::Java => {
+                get_cleaned_source_code::<Java>(src)
+                    .unwrap_or_else(|| src.to_string())
+            },
         }
     }
     fn get_count_of_meaningful_lines(&self, src: &str) -> usize {

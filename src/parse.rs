@@ -11,13 +11,6 @@ pub struct Span {
 }
 
 impl Span {
-    // TODO: don't think this is useful, but let's see
-    // pub fn start(&self) -> usize {
-    //     self.start
-    // }
-    // pub fn end(&self) -> usize {
-    //     self.end
-    // }
     pub fn new(start: usize, end: usize) -> Self {
         Self { start, end }
     }
@@ -32,7 +25,7 @@ pub enum Matcher {
     Repeat(&'static str),
     Fn(&'static dyn Fn(&str) -> Option<&str>),
     AnyAlphaNumeric,
-    Any, // TODO: also add Regex(regex::Regex) for greater comfort as an optional feature
+    Empty, // TODO: also add Regex(regex::Regex) for greater comfort as an optional feature
 }
 
 impl Matcher {
@@ -48,7 +41,11 @@ impl Matcher {
             }
             Matcher::PreExact(s) => {
                 if src.starts_with(s) {
-                    Some(&src[0..s.len() - 1])
+                    Some(&src[..s.len() - 1])
+                } else if s.eq(&"\n") && src.len() == 1 {
+                    // only pre-exact is newline,
+                    // and we know what the src has ended!
+                    Some(&src[..s.len()])
                 } else {
                     None
                 }
@@ -59,20 +56,14 @@ impl Matcher {
                 while src[i..].starts_with(s) {
                     i += s.len();
                 }
-                // if atleast 1 occurence
-                if i > 0 {
-                    Some(&src[..i])
-                } else {
-                    // else no match
-                    None
-                }
+                Some(&src[..i])
             }
             Matcher::AnyAlphaNumeric => src
                 .char_indices()
                 .find(|(_, c)| !c.is_alphanumeric())
                 .map(|(i, _)| &src[..i])
                 .or(Some(src)),
-            Matcher::Any => Some(""),
+            Matcher::Empty => Some(""),
         }
     }
 }
@@ -85,7 +76,7 @@ impl Debug for Matcher {
             Self::Repeat(arg0) => f.debug_tuple("Repeat").field(arg0).finish(),
             Self::Fn(_) => f.debug_tuple("Fn").finish(),
             Self::AnyAlphaNumeric => write!(f, "AnyAlphaNumeric"),
-            Self::Any => write!(f, "Any"),
+            Self::Empty => write!(f, "Empty"),
         }
     }
 }
@@ -129,6 +120,9 @@ pub enum ParseItem {
     /// second argument is the keyedness
     Comment(ItemRange, bool),
     String(ItemRange, bool),
+    // Represents things like format strings, or the general case of
+    // embedded DSLs which interpolate meaningful source within themselves.
+    InSource(ItemRange, bool),
     Escaped(&'static ParseItem),
     UnEscaped(&'static ParseItem),
 }
@@ -149,8 +143,8 @@ impl BuilderItemRange {
             begin: self.begin,
             end: EndPoint {
                 start: Matcher::Exact(src),
-                key: Matcher::Any,
-                end: Matcher::Any,
+                key: Matcher::Empty,
+                end: Matcher::Empty,
             },
         }
     }
@@ -160,8 +154,8 @@ impl BuilderItemRange {
             begin: self.begin,
             end: EndPoint {
                 start: Matcher::PreExact(src),
-                key: Matcher::Any,
-                end: Matcher::Any,
+                key: Matcher::Empty,
+                end: Matcher::Empty,
             },
         }
     }
@@ -178,8 +172,8 @@ impl ItemRange {
         BuilderItemRange {
             begin: EndPoint {
                 start: Matcher::Exact(src),
-                key: Matcher::Any,
-                end: Matcher::Any,
+                key: Matcher::Empty,
+                end: Matcher::Empty,
             },
         }
     }
@@ -194,53 +188,42 @@ impl ItemRange {
 impl ParseItem {
     pub fn begin(&self) -> &EndPoint {
         match self {
-            Self::String(s, _) | Self::Comment(s, _) => &s.begin,
+            Self::String(s, _) | Self::Comment(s, _) | Self::InSource(s, _) => &s.begin,
             Self::Escaped(item) | Self::UnEscaped(item) => item.begin(),
         }
     }
     pub fn end(&self) -> &EndPoint {
         match self {
-            Self::String(s, _) | Self::Comment(s, _) => &s.end,
+            Self::String(s, _) | Self::Comment(s, _) | Self::InSource(s, _) => &s.end,
             Self::Escaped(item) | Self::UnEscaped(item) => item.end(),
         }
     }
-    pub fn is_key_matched(&self) -> bool {
+    pub fn is_keyed(&self) -> bool {
         match self {
-            Self::Escaped(k) | Self::UnEscaped(k) => k.is_key_matched(),
+            Self::Escaped(k) | Self::UnEscaped(k) => k.is_keyed(),
             Self::String(_, true) | Self::Comment(_, true) => true,
             _ => false,
         }
     }
     pub fn to_parse_output<'a>(&self, src: &'a str) -> ParseOutput<'a> {
         match self {
-            Self::Comment(_, _) => ParseOutput::Comment(src),
-            Self::String(_, _) => ParseOutput::String(src),
+            Self::Comment(..) => ParseOutput::Comment(src),
+            Self::String(..) => ParseOutput::String(src),
+            Self::InSource(..) => ParseOutput::Source(src),
             Self::Escaped(pi) | Self::UnEscaped(pi) => pi.to_parse_output(src),
         }
     }
+    pub fn is_escaped(&self) -> bool {
+        matches!(self, ParseItem::Escaped(_))
+    }
 }
-
-// Most of this is manually implemented elsewhere
-// impl ParseItem {
-//     // pub fn begin_match(&self, src: &str) -> Option<Matches> {
-//     //     self.begin().matches(src)
-//     // }
-//     // pub fn till_end_match(&self, src: &str) -> Option<usize> {
-//     //     (0..src.len().min(25600)).find_map(|x| {
-//     //         self.end()
-//     //             .matches(&src[x..])
-//     //             .and_then(|x| x.last().copied())
-//     //             .map(|x| x.end)
-//     //     })
-//     // }
-// }
 
 #[derive(Debug, Clone, Copy)]
 pub enum ParseOutput<'a> {
     Comment(&'a str),
     String(&'a str),
     Source(&'a str),
-    Invalid(&'a str),
+    Invalid(usize, usize),
     EOL(&'a str),
     EOF,
 }
@@ -256,7 +239,7 @@ impl ParseOutput<'_> {
         match self {
             Self::Comment(s) | Self::String(s) | Self::Source(s) => s.len(),
             Self::EOL(_) => 1,
-            Self::Invalid(_) | Self::EOF => 0,
+            Self::Invalid(..) | Self::EOF => 0,
         }
     }
 }
@@ -264,7 +247,7 @@ impl ParseOutput<'_> {
 pub trait Language: Sized {
     const PARSE_ITEMS: &'static [ParseItem];
     fn is_meaningful_src(src: &str) -> bool {
-        !src.chars().all(char::is_whitespace)
+        src.chars().next().is_some() && !src.chars().all(char::is_whitespace)
     }
     fn get_parser(src: &str) -> Parser<Self> {
         Parser::<Self>::new(src)
@@ -296,19 +279,24 @@ impl<L: Language> Parser<'_, L> {
 
     /// Try to parse as per the given grammar.
     /// This function will return an error if parsing as the given grammar fails
-    pub fn parse<'a>(&self, src: &'a str) -> Result<ParseOutput<'a>, String> {
+    fn parse_next<'a>(&self, src: &'a str) -> Result<ParseOutput<'a>, String> {
         let items = self.language_items;
         if src.starts_with('\n') {
             Ok(ParseOutput::EOL(&src[..1]))
         } else if let Some((i, b, end_matches)) = (0..items.len())
             .find_map(|i| Some((i, items[i].begin().matches(src)?)))
             .and_then(|(i, matches)| {
+                let mut escape = false;
                 (matches[2].end..src.len()).find_map(|b| {
-                    if src.is_char_boundary(b) {
+                    if src.is_char_boundary(b) && !escape {
+                        if items[i].is_escaped() && src[b..].starts_with('\\') {
+                            escape = true;
+                            return None;
+                        }
                         Some((
                             i,
                             b,
-                            if items[i].is_key_matched() {
+                            if items[i].is_keyed() {
                                 items[i].end().matches_with_key(
                                     &src[b..],
                                     &src[matches[1].start..matches[1].end],
@@ -318,6 +306,9 @@ impl<L: Language> Parser<'_, L> {
                             },
                         ))
                     } else {
+                        if escape {
+                            escape = false;
+                        }
                         None
                     }
                 })
@@ -355,10 +346,10 @@ impl<'a, L: Language> Iterator for Parser<'a, L> {
             self.index = self.src.len() + 1;
             Some(ParseOutput::EOF)
         } else {
-            let parse_output = self.parse(&self.src[self.index..]);
+            let parse_output = self.parse_next(&self.src[self.index..]);
             self.index += parse_output.as_ref().map(|x| x.len()).unwrap_or_default();
             Some(parse_output.unwrap_or_else(|_| {
-                let x = ParseOutput::Invalid(&self.src[self.index..]);
+                let x = ParseOutput::Invalid(self.index, self.src.len());
                 self.index = self.src.len();
                 x
             }))

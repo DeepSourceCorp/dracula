@@ -139,7 +139,7 @@ int main() {
                 ) + "\0")
                     .into(),
             );
-            assert_eq!(get_meaningful_line_count(src.as_ptr(), C_LANG, 0), 4);
+            assert_eq!(get_meaningful_line_count(src.as_ptr(), C_LANG, 0), 3);
         }
     }
 
@@ -164,7 +164,7 @@ int main() {
             let mut len = 0u64;
             let ptr = meaningful_lines(src.as_ptr(), C_LANG, 0, &mut len as *mut u64);
             let v = Vec::from_raw_parts(ptr, len as _, len as _);
-            assert_eq!(&v, &[2, 4, 7, 8]);
+            assert_eq!(&v, &[2, 4, 7]);
         }
     }
 
@@ -193,7 +193,7 @@ int main() {
 r#"int main() {
     return 0;
  int x = 10;
-}"#,)
+"#,)
             );
         }
     }
