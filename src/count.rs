@@ -100,13 +100,13 @@ pub fn get_meaningful_line_indices<L: Language + 'static>(
 
 /// Uses the [`Parser`] to try and figure out the parts of the source
 /// that are meaningful
-pub fn get_cleaned_source_code<L: Language>(src: &str) -> String {
+pub fn get_cleaned_source_code<L: Language>(src: &str) -> Option<String> {
     let parsed = L::get_parser(src);
     let mut meaningful_src = String::default();
     let mut stack = vec![];
     for p in parsed {
         if matches!(p, ParseOutput::Invalid(..)) {
-            return src.to_string();
+            return None;
         }
         if matches!(p, ParseOutput::EOL(_) | ParseOutput::EOF) {
             let meaningful_src_len = meaningful_src.len();
@@ -125,7 +125,7 @@ pub fn get_cleaned_source_code<L: Language>(src: &str) -> String {
             stack.push(p);
         }
     }
-    meaningful_src
+    Some(meaningful_src)
 }
 
 /// Uses the [`get_meaningful_line_indices`] function to build an iterator
