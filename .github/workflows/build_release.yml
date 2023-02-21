@@ -2,6 +2,8 @@ name: pydracula
 
 on:
   push:
+    tags:
+      - v**
 
 jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/.github/workflows/Python.yml
   macos:
