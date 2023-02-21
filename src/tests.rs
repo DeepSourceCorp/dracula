@@ -190,7 +190,7 @@ mod simple_rust {
     }
 
     #[test]
-    fn more_parse() {
+    fn possible_misparse_occurrences() {
         let src = r####"
         pub fn main() {
             let s = "\u{2603}";

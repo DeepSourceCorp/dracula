@@ -98,8 +98,7 @@ pub fn get_meaningful_line_indices<L: Language + 'static>(
     }
 }
 
-/// Uses the [`Parser`] to try and figure out the parts of the source
-/// that are meaningful
+/// Uses the [`Parser`] to try and figure out the meaningful parts of the source
 pub fn get_cleaned_source_code<L: Language>(src: &str) -> Option<String> {
     let parsed = L::get_parser(src);
     let mut meaningful_src = String::default();

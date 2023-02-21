@@ -37,10 +37,11 @@ impl Lang {
             },
             Lang::C => {
                 get_cleaned_source_code::<C>(src)
-                .unwrap_or_else(|| src.to_string())
+                    .unwrap_or_else(|| src.to_string())
             },
             Lang::Java => {
-                get_cleaned_source_code::<Java>(src).unwrap_or_else(|| src.to_string())
+                get_cleaned_source_code::<Java>(src)
+                    .unwrap_or_else(|| src.to_string())
             },
         }
     }

@@ -116,6 +116,8 @@ pub enum ParseItem {
     /// second argument is the keyedness
     Comment(ItemRange, bool),
     String(ItemRange, bool),
+    // Represents things like format strings, or the general case of 
+    // embedded DSLs which interpolate meaningful source within themselves.
     InSource(ItemRange, bool),
     Escaped(&'static ParseItem),
     UnEscaped(&'static ParseItem),
@@ -201,17 +203,14 @@ impl ParseItem {
     }
     pub fn to_parse_output<'a>(&self, src: &'a str) -> ParseOutput<'a> {
         match self {
-            Self::Comment(_, _) => ParseOutput::Comment(src),
-            Self::String(_, _) => ParseOutput::String(src),
-            Self::InSource(_, _) => ParseOutput::Source(src),
+            Self::Comment(..) => ParseOutput::Comment(src),
+            Self::String(..) => ParseOutput::String(src),
+            Self::InSource(..) => ParseOutput::Source(src),
             Self::Escaped(pi) | Self::UnEscaped(pi) => pi.to_parse_output(src),
         }
     }
     pub fn is_escaped(&self) -> bool {
-        match self {
-            ParseItem::Escaped(_) => true,
-            _ => false,
-        }
+        matches!(self, ParseItem::Escaped(_))
     }
 }
 

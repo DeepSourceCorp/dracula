@@ -100,7 +100,7 @@ impl Language for Rust {
                 Matcher::Repeat("#"),
                 Matcher::Exact("\""),
             )
-            .end_matcher(Matcher::Exact(r#"""#), Matcher::Repeat("#"), Matcher::Any),
+            .end_matcher(Matcher::Exact("\""), Matcher::Repeat("#"), Matcher::Any),
             true,
         )),
     ];
