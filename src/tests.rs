@@ -32,9 +32,9 @@ mod simple_c {
 
 #[cfg(test)]
 mod simple_python {
-    use pretty_assertions::assert_eq;
-    use crate::count::{get_count_of_meaningful_lines, get_cleaned_source_code};
+    use crate::count::{get_cleaned_source_code, get_count_of_meaningful_lines};
     use crate::langs::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn try_parse() {
@@ -111,7 +111,9 @@ mod simple_python {
             x = fr'''asd'''
             x = fr"""asd"""
             "###;
-        assert_eq!(get_cleaned_source_code::<Python>(src).unwrap(), r###"        def foo( 
+        assert_eq!(
+            get_cleaned_source_code::<Python>(src).unwrap(),
+            r###"        def foo( 
           bar,
           car = ,
         ):
@@ -155,7 +157,22 @@ mod simple_python {
             x = fr'asd'
             x = fr'''asd'''
             x = fr"""asd"""
-"###);
+"###
+        );
+    }
+
+    #[test]
+    fn golden_file_test() {
+        // ./src/fixtures/python_tests.py
+        let src = std::fs::read_to_string("./src/fixtures/python_tests.py").unwrap();
+        let golden_src = std::fs::read_to_string("./src/fixtures/python_tests_golden.py").unwrap();
+        assert_eq!(get_cleaned_source_code::<Python>(&src).unwrap(), golden_src);
+        // ./src/fixtures/more_python_tests.py
+        let src = std::fs::read_to_string("./src/fixtures/more_python_tests.py").unwrap();
+        let golden_src =
+            std::fs::read_to_string("./src/fixtures/more_python_tests_golden.py").unwrap();
+        // println!("{}", get_cleaned_source_code::<Python>(&src).unwrap());
+        assert_eq!(get_cleaned_source_code::<Python>(&src).unwrap(), golden_src);
     }
 }
 

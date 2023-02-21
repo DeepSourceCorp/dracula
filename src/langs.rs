@@ -100,7 +100,7 @@ impl Language for Rust {
                 Matcher::Repeat("#"),
                 Matcher::Exact("\""),
             )
-            .end_matcher(Matcher::Exact("\""), Matcher::Repeat("#"), Matcher::Any),
+            .end_matcher(Matcher::Exact("\""), Matcher::Repeat("#"), Matcher::Empty),
             true,
         )),
     ];
@@ -143,37 +143,37 @@ impl Language for Python {
         ParseItem::UnEscaped(&ParseItem::String(
             ItemRange::start_matcher(
                 PYTHON_STRING_START_MATCHER,
-                Matcher::Any,
+                Matcher::Empty,
                 Matcher::Exact("\"\"\""),
             )
-            .end_matcher(Matcher::Exact("\"\"\""), Matcher::Any, Matcher::Any),
+            .end_matcher(Matcher::Exact("\"\"\""), Matcher::Empty, Matcher::Empty),
             false,
         )),
         ParseItem::UnEscaped(&ParseItem::String(
             ItemRange::start_matcher(
                 PYTHON_STRING_START_MATCHER,
-                Matcher::Any,
+                Matcher::Empty,
                 Matcher::Exact("'''"),
             )
-            .end_matcher(Matcher::Exact("'''"), Matcher::Any, Matcher::Any),
+            .end_matcher(Matcher::Exact("'''"), Matcher::Empty, Matcher::Empty),
             false,
         )),
         ParseItem::UnEscaped(&ParseItem::InSource(
             ItemRange::start_matcher(
                 PYTHON_FORMAT_STRING_START_MATCHER,
-                Matcher::Any,
+                Matcher::Empty,
                 Matcher::Exact("\"\"\""),
             )
-            .end_matcher(Matcher::Exact("\"\"\""), Matcher::Any, Matcher::Any),
+            .end_matcher(Matcher::Exact("\"\"\""), Matcher::Empty, Matcher::Empty),
             false,
         )),
         ParseItem::UnEscaped(&ParseItem::InSource(
             ItemRange::start_matcher(
                 PYTHON_FORMAT_STRING_START_MATCHER,
-                Matcher::Any,
+                Matcher::Empty,
                 Matcher::Exact("'''"),
             )
-            .end_matcher(Matcher::Exact("'''"), Matcher::Any, Matcher::Any),
+            .end_matcher(Matcher::Exact("'''"), Matcher::Empty, Matcher::Empty),
             false,
         )),
         ParseItem::UnEscaped(&ParseItem::Comment(
@@ -183,37 +183,37 @@ impl Language for Python {
         ParseItem::Escaped(&ParseItem::String(
             ItemRange::start_matcher(
                 PYTHON_STRING_START_MATCHER,
-                Matcher::Any,
+                Matcher::Empty,
                 Matcher::Exact("\""),
             )
-            .end_matcher(Matcher::Exact("\""), Matcher::Any, Matcher::Any),
+            .end_matcher(Matcher::Exact("\""), Matcher::Empty, Matcher::Empty),
             false,
         )),
         ParseItem::Escaped(&ParseItem::String(
             ItemRange::start_matcher(
                 PYTHON_STRING_START_MATCHER,
-                Matcher::Any,
+                Matcher::Empty,
                 Matcher::Exact("'"),
             )
-            .end_matcher(Matcher::Exact("'"), Matcher::Any, Matcher::Any),
+            .end_matcher(Matcher::Exact("'"), Matcher::Empty, Matcher::Empty),
             false,
         )),
         ParseItem::Escaped(&ParseItem::InSource(
             ItemRange::start_matcher(
                 PYTHON_FORMAT_STRING_START_MATCHER,
-                Matcher::Any,
+                Matcher::Empty,
                 Matcher::Exact("\""),
             )
-            .end_matcher(Matcher::Exact("\""), Matcher::Any, Matcher::Any),
+            .end_matcher(Matcher::Exact("\""), Matcher::Empty, Matcher::Empty),
             false,
         )),
         ParseItem::Escaped(&ParseItem::InSource(
             ItemRange::start_matcher(
                 PYTHON_FORMAT_STRING_START_MATCHER,
-                Matcher::Any,
+                Matcher::Empty,
                 Matcher::Exact("'"),
             )
-            .end_matcher(Matcher::Exact("'"), Matcher::Any, Matcher::Any),
+            .end_matcher(Matcher::Exact("'"), Matcher::Empty, Matcher::Empty),
             false,
         )),
     ];

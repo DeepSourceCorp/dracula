@@ -25,7 +25,7 @@ pub enum Matcher {
     Repeat(&'static str),
     Fn(&'static dyn Fn(&str) -> Option<&str>),
     AnyAlphaNumeric,
-    Any, // TODO: also add Regex(regex::Regex) for greater comfort as an optional feature
+    Empty, // TODO: also add Regex(regex::Regex) for greater comfort as an optional feature
 }
 
 impl Matcher {
@@ -41,7 +41,11 @@ impl Matcher {
             }
             Matcher::PreExact(s) => {
                 if src.starts_with(s) {
-                    Some(&src[0..s.len() - 1])
+                    Some(&src[..s.len() - 1])
+                } else if s.eq(&"\n") && src.len() == 1 {
+                    // only pre-exact is newline,
+                    // and we know what the src has ended!
+                    Some(&src[..s.len()])
                 } else {
                     None
                 }
@@ -59,7 +63,7 @@ impl Matcher {
                 .find(|(_, c)| !c.is_alphanumeric())
                 .map(|(i, _)| &src[..i])
                 .or(Some(src)),
-            Matcher::Any => Some(""),
+            Matcher::Empty => Some(""),
         }
     }
 }
@@ -72,7 +76,7 @@ impl Debug for Matcher {
             Self::Repeat(arg0) => f.debug_tuple("Repeat").field(arg0).finish(),
             Self::Fn(_) => f.debug_tuple("Fn").finish(),
             Self::AnyAlphaNumeric => write!(f, "AnyAlphaNumeric"),
-            Self::Any => write!(f, "Any"),
+            Self::Empty => write!(f, "Empty"),
         }
     }
 }
@@ -116,7 +120,7 @@ pub enum ParseItem {
     /// second argument is the keyedness
     Comment(ItemRange, bool),
     String(ItemRange, bool),
-    // Represents things like format strings, or the general case of 
+    // Represents things like format strings, or the general case of
     // embedded DSLs which interpolate meaningful source within themselves.
     InSource(ItemRange, bool),
     Escaped(&'static ParseItem),
@@ -139,8 +143,8 @@ impl BuilderItemRange {
             begin: self.begin,
             end: EndPoint {
                 start: Matcher::Exact(src),
-                key: Matcher::Any,
-                end: Matcher::Any,
+                key: Matcher::Empty,
+                end: Matcher::Empty,
             },
         }
     }
@@ -150,8 +154,8 @@ impl BuilderItemRange {
             begin: self.begin,
             end: EndPoint {
                 start: Matcher::PreExact(src),
-                key: Matcher::Any,
-                end: Matcher::Any,
+                key: Matcher::Empty,
+                end: Matcher::Empty,
             },
         }
     }
@@ -168,8 +172,8 @@ impl ItemRange {
         BuilderItemRange {
             begin: EndPoint {
                 start: Matcher::Exact(src),
-                key: Matcher::Any,
-                end: Matcher::Any,
+                key: Matcher::Empty,
+                end: Matcher::Empty,
             },
         }
     }
@@ -243,7 +247,7 @@ impl ParseOutput<'_> {
 pub trait Language: Sized {
     const PARSE_ITEMS: &'static [ParseItem];
     fn is_meaningful_src(src: &str) -> bool {
-        !src.chars().all(char::is_whitespace)
+        src.chars().next().is_some() && !src.chars().all(char::is_whitespace)
     }
     fn get_parser(src: &str) -> Parser<Self> {
         Parser::<Self>::new(src)
