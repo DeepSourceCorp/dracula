@@ -58,7 +58,7 @@ jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/
       - name: Install built wheel
         run: |
           pip install ./dist/pydracula-*.whl --force-reinstall
-          rm -Force dist
+          rmdir -r dist
           python -c "import pydracula; pydracula.Lang"
       - name: Upload wheels
         uses: actions/upload-artifact@v3
