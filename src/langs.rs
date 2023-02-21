@@ -28,9 +28,8 @@ impl Language for Java {
         )),
     ];
     fn is_meaningful_src(src: &str) -> bool {
-        !src.chars().all(|ch| {
-            char::is_whitespace(ch) || ch == '}' || ch == '{'
-        })
+        !src.chars()
+            .all(|ch| char::is_whitespace(ch) || ch == '}' || ch == '{')
     }
 }
 
@@ -69,10 +68,9 @@ impl Language for C {
         )), // R"UNIQUE_KEY( RAW STRING )UNIQUE_KEY"
     ];
     fn is_meaningful_src(src: &str) -> bool {
-        !src.chars().all(|ch| {
-            char::is_whitespace(ch) || ch == '}' || ch == '{'
-        })
-    }    
+        !src.chars()
+            .all(|ch| char::is_whitespace(ch) || ch == '}' || ch == '{')
+    }
 }
 
 /// Rust needs to define keyedness for Raw Strings
@@ -108,17 +106,74 @@ impl Language for Rust {
     ];
 
     fn is_meaningful_src(src: &str) -> bool {
-        !src.chars().all(|ch| {
-            char::is_whitespace(ch) || ch == '}' || ch == '{'
-        })
+        !src.chars()
+            .all(|ch| char::is_whitespace(ch) || ch == '}' || ch == '{')
     }
 }
+
+const PYTHON_STRING_START_MATCHER: Matcher = Matcher::Fn(
+    &(|src| {
+        if src.starts_with(['b', 'r', 'u']) {
+            if src[1..].starts_with(['b', 'r', 'u']) {
+                Some(&src[..2])
+            } else {
+                Some(&src[..1])
+            }
+        } else {
+            Some("")
+        }
+    }),
+);
+
+const PYTHON_FORMAT_STRING_START_MATCHER: Matcher = Matcher::Fn(
+    &(|src| {
+        if src.starts_with("fr") || src.starts_with("rf") {
+            Some(&src[..2])
+        } else if src.starts_with("f") {
+            Some(&src[..1])
+        } else {
+            None
+        }
+    }),
+);
 
 pub struct Python;
 impl Language for Python {
     const PARSE_ITEMS: &'static [ParseItem] = &[
-        ParseItem::UnEscaped(&ParseItem::Comment(
-            ItemRange::fixed_start("\"\"\"").fixed_end("\"\"\""),
+        ParseItem::UnEscaped(&ParseItem::String(
+            ItemRange::start_matcher(
+                PYTHON_STRING_START_MATCHER,
+                Matcher::Any,
+                Matcher::Exact("\"\"\""),
+            )
+            .end_matcher(Matcher::Exact("\"\"\""), Matcher::Any, Matcher::Any),
+            false,
+        )),
+        ParseItem::UnEscaped(&ParseItem::String(
+            ItemRange::start_matcher(
+                PYTHON_STRING_START_MATCHER,
+                Matcher::Any,
+                Matcher::Exact("'''"),
+            )
+            .end_matcher(Matcher::Exact("'''"), Matcher::Any, Matcher::Any),
+            false,
+        )),
+        ParseItem::UnEscaped(&ParseItem::InSource(
+            ItemRange::start_matcher(
+                PYTHON_FORMAT_STRING_START_MATCHER,
+                Matcher::Any,
+                Matcher::Exact("\"\"\""),
+            )
+            .end_matcher(Matcher::Exact("\"\"\""), Matcher::Any, Matcher::Any),
+            false,
+        )),
+        ParseItem::UnEscaped(&ParseItem::InSource(
+            ItemRange::start_matcher(
+                PYTHON_FORMAT_STRING_START_MATCHER,
+                Matcher::Any,
+                Matcher::Exact("'''"),
+            )
+            .end_matcher(Matcher::Exact("'''"), Matcher::Any, Matcher::Any),
             false,
         )),
         ParseItem::UnEscaped(&ParseItem::Comment(
@@ -126,7 +181,39 @@ impl Language for Python {
             false,
         )),
         ParseItem::Escaped(&ParseItem::String(
-            ItemRange::fixed_start("\"").fixed_end("\""),
+            ItemRange::start_matcher(
+                PYTHON_STRING_START_MATCHER,
+                Matcher::Any,
+                Matcher::Exact("\""),
+            )
+            .end_matcher(Matcher::Exact("\""), Matcher::Any, Matcher::Any),
+            false,
+        )),
+        ParseItem::Escaped(&ParseItem::String(
+            ItemRange::start_matcher(
+                PYTHON_STRING_START_MATCHER,
+                Matcher::Any,
+                Matcher::Exact("'"),
+            )
+            .end_matcher(Matcher::Exact("'"), Matcher::Any, Matcher::Any),
+            false,
+        )),
+        ParseItem::Escaped(&ParseItem::InSource(
+            ItemRange::start_matcher(
+                PYTHON_FORMAT_STRING_START_MATCHER,
+                Matcher::Any,
+                Matcher::Exact("\""),
+            )
+            .end_matcher(Matcher::Exact("\""), Matcher::Any, Matcher::Any),
+            false,
+        )),
+        ParseItem::Escaped(&ParseItem::InSource(
+            ItemRange::start_matcher(
+                PYTHON_FORMAT_STRING_START_MATCHER,
+                Matcher::Any,
+                Matcher::Exact("'"),
+            )
+            .end_matcher(Matcher::Exact("'"), Matcher::Any, Matcher::Any),
             false,
         )),
     ];

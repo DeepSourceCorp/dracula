@@ -116,6 +116,7 @@ pub enum ParseItem {
     /// second argument is the keyedness
     Comment(ItemRange, bool),
     String(ItemRange, bool),
+    InSource(ItemRange, bool),
     Escaped(&'static ParseItem),
     UnEscaped(&'static ParseItem),
 }
@@ -181,13 +182,13 @@ impl ItemRange {
 impl ParseItem {
     pub fn begin(&self) -> &EndPoint {
         match self {
-            Self::String(s, _) | Self::Comment(s, _) => &s.begin,
+            Self::String(s, _) | Self::Comment(s, _) | Self::InSource(s, _) => &s.begin,
             Self::Escaped(item) | Self::UnEscaped(item) => item.begin(),
         }
     }
     pub fn end(&self) -> &EndPoint {
         match self {
-            Self::String(s, _) | Self::Comment(s, _) => &s.end,
+            Self::String(s, _) | Self::Comment(s, _) | Self::InSource(s, _) => &s.end,
             Self::Escaped(item) | Self::UnEscaped(item) => item.end(),
         }
     }
@@ -202,6 +203,7 @@ impl ParseItem {
         match self {
             Self::Comment(_, _) => ParseOutput::Comment(src),
             Self::String(_, _) => ParseOutput::String(src),
+            Self::InSource(_, _) => ParseOutput::Source(src),
             Self::Escaped(pi) | Self::UnEscaped(pi) => pi.to_parse_output(src),
         }
     }
