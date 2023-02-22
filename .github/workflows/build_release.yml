@@ -37,7 +37,7 @@ jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/
         uses: actions/upload-artifact@v3
         with:
           name: wheels-macos
-          paths: |
+          path: |
             dist-x86-64
             dist-universal2
 
