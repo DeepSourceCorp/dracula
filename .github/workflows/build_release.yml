@@ -2,6 +2,9 @@ name: pydracula
 
 on:
   push:
+    tags:
+      - '*'
+  workflow_dispatch:
 
 jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/.github/workflows/Python.yml
   macos:
@@ -17,26 +20,26 @@ jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/
         uses: PyO3/maturin-action@v1
         with:
           target: x86_64
-          args: --release --out dist -m pydracula/Cargo.toml
+          args: --release --out dist-x86-64 -m pydracula/Cargo.toml
       - name: Install built wheel - x86_64
         run: |
-          pip install ./dist/pydracula-*.whl --force-reinstall
-          rm -rf dist
+          pip install ./dist-x86-64/pydracula-*.whl --force-reinstall
           python -c "import pydracula; pydracula.Lang"
       - name: Build wheels - universal2
         uses: PyO3/maturin-action@v1
         with:
-          args: --release --universal2 --out dist -m pydracula/Cargo.toml
+          args: --release --universal2 --out dist-universal2 -m pydracula/Cargo.toml
       - name: Install built wheel - universal2
         run: |
-          pip install ./dist/pydracula-*.whl --force-reinstall
-          rm -rf dist
+          pip install ./dist-universal2/pydracula-*.whl --force-reinstall
           python -c "import pydracula; pydracula.Lang"
       - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:
-          name: wheels
-          path: dist
+          name: wheels-macos
+          paths: |
+            dist-x86-64
+            dist-universal2
 
   windows:
     runs-on: windows-latest
@@ -58,12 +61,11 @@ jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/
       - name: Install built wheel
         run: |
           pip install pydracula --no-index --find-links dist --force-reinstall
-          rmdir -r dist
           python -c "import pydracula; pydracula.Lang"
       - name: Upload wheels
         uses: actions/upload-artifact@v3
         with:
-          name: wheels
+          name: wheels-windows
           path: dist
 
   linux:
@@ -87,12 +89,11 @@ jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/
       if: matrix.target == 'x86_64'
       run: |
           pip install ./dist/pydracula-*.whl --force-reinstall
-          rm -rf dist
           python -c "import pydracula; pydracula.Lang"
     - name: Upload wheels
       uses: actions/upload-artifact@v3
       with:
-        name: wheels
+        name: wheels-linux
         path: dist
 
   linux-cross:
@@ -124,12 +125,11 @@ jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/
           pip3 install -U pip
         run: |
           pip3 install ./dist/pydracula-*.whl --force-reinstall
-          rm -rf dist
           python3 -c "import pydracula; pydracula.Lang"
     - name: Upload wheels
       uses: actions/upload-artifact@v3
       with:
-        name: wheels
+        name: wheels-linux-cross
         path: dist
 
   musllinux:
@@ -161,12 +161,11 @@ jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/
           apk add py3-pip
           pip3 install -U pip
           pip install ./dist/pydracula-*.whl --force-reinstall
-          rm -rf dist
           python -c "import pydracula; pydracula.Lang"
     - name: Upload wheels
       uses: actions/upload-artifact@v3
       with:
-        name: wheels
+        name: wheels-musllinux
         path: dist
 
   musllinux-cross:
@@ -200,12 +199,11 @@ jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/
           pip3 install -U pip
         run: |
           pip install ./dist/pydracula-*.whl --force-reinstall
-          rm -rf dist
           python -c "import pydracula; pydracula.Lang"
     - name: Upload wheels
       uses: actions/upload-artifact@v3
       with:
-        name: wheels
+        name: wheels-musllinux-cross
         path: dist
 
   release:
@@ -214,9 +212,7 @@ jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/
     if: "startsWith(github.ref, 'refs/tags/')"
     needs: [ macos, windows, linux, linux-cross, musllinux, musllinux-cross ]
     steps:
-      - uses: actions/download-artifact@v3
-        with:
-          name: wheels
+      - uses: actions/download-artifact@v3 # download all artifacts
       - uses: actions/setup-python@v4
         with:
           python-version: 3.9
@@ -226,4 +222,20 @@ jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
           pip install --upgrade twine
+          pushd wheels-musllinux-cross
+          twine upload --skip-existing *
+          popd
+          pushd wheels-musllinux
+          twine upload --skip-existing *
+          popd
+          pushd wheels-linux-cross
+          twine upload --skip-existing *
+          popd
+          pushd wheels-linux
+          twine upload --skip-existing *
+          popd
+          pushd wheels-windows
+          twine upload --skip-existing *
+          popd
+          pushd wheels-macos
           twine upload --skip-existing *
