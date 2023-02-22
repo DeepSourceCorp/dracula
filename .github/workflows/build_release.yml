@@ -237,4 +237,4 @@ jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/
           twine upload --skip-existing *
           popd
           pushd wheels-macos
-          twine upload --skip-existing *
+          twine upload --skip-existing **/*
