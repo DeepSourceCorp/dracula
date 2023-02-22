@@ -223,18 +223,18 @@ jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/
           pip install --upgrade twine
           pushd wheels-musllinux-cross
           twine upload --skip-existing *
-          popd wheels-musllinux-cross
+          popd
           pushd wheels-musllinux
           twine upload --skip-existing *
-          popd wheels-musllinux
+          popd
           pushd wheels-linux-cross
           twine upload --skip-existing *
-          popd wheels-linux-cross
+          popd
           pushd wheels-linux
           twine upload --skip-existing *
-          popd wheels-linux
+          popd
           pushd wheels-windows
           twine upload --skip-existing *
-          popd wheels-windows
+          popd
           pushd wheels-macos
           twine upload --skip-existing *
