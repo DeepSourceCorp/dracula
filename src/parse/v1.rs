@@ -117,9 +117,15 @@ impl EndPoint {
 /// ```
 #[derive(Debug)]
 pub enum ParseItem {
-    /// second argument is the keyedness
+    // Second argument is the if we should pick the key
+    // for range matcher from the starting matcher
     Comment(ItemRange, bool),
     String(ItemRange, bool),
+    // WithInner is for ParseItem that contain something else inside them,
+    // for which we need a separate parse.
+    WithInner(&'static ParseItem, &'static ParseItem),
+    // SameAsSrcInterpolation is added just for Ruby for now
+    SameAsSrcInterpolation(ItemRange),
     // Represents things like format strings, or the general case of
     // embedded DSLs which interpolate meaningful source within themselves.
     InSource(ItemRange, bool),
@@ -188,14 +194,20 @@ impl ItemRange {
 impl ParseItem {
     pub fn begin(&self) -> &EndPoint {
         match self {
-            Self::String(s, _) | Self::Comment(s, _) | Self::InSource(s, _) => &s.begin,
-            Self::Escaped(item) | Self::UnEscaped(item) => item.begin(),
+            Self::String(s, _)
+            | Self::Comment(s, _)
+            | Self::InSource(s, _)
+            | Self::SameAsSrcInterpolation(s) => &s.begin,
+            Self::Escaped(item) | Self::UnEscaped(item) | Self::WithInner(item, _) => item.begin(),
         }
     }
     pub fn end(&self) -> &EndPoint {
         match self {
-            Self::String(s, _) | Self::Comment(s, _) | Self::InSource(s, _) => &s.end,
-            Self::Escaped(item) | Self::UnEscaped(item) => item.end(),
+            Self::String(s, _)
+            | Self::Comment(s, _)
+            | Self::InSource(s, _)
+            | Self::SameAsSrcInterpolation(s) => &s.end,
+            Self::Escaped(item) | Self::UnEscaped(item) | Self::WithInner(item, _) => item.end(),
         }
     }
     pub fn is_keyed(&self) -> bool {
@@ -209,8 +221,10 @@ impl ParseItem {
         match self {
             Self::Comment(..) => ParseOutput::Comment(src),
             Self::String(..) => ParseOutput::String(src),
-            Self::InSource(..) => ParseOutput::Source(src),
-            Self::Escaped(pi) | Self::UnEscaped(pi) => pi.to_parse_output(src),
+            Self::Escaped(pi) | Self::UnEscaped(pi) | Self::WithInner(pi, _) => {
+                pi.to_parse_output(src)
+            }
+            _ => ParseOutput::Source(src),
         }
     }
     pub fn is_escaped(&self) -> bool {
