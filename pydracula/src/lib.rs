@@ -9,6 +9,20 @@ enum Lang {
     Java,
 }
 
+#[pyclass]
+#[derive(Debug, Clone, Copy)]
+enum LangV2 {
+    Python,
+    Rust,
+    C,
+    Java,
+    Typescript,
+    Javascript,
+    Scala,
+    CSharp,
+    Ruby,
+}
+
 impl Lang {
     fn get_meaningful_line_indices(&self, src: &str) -> Vec<usize> {
         use dracula::count::*;
@@ -63,6 +77,29 @@ fn get_meaningful_line_indices(lang: Lang, src: &str) -> Vec<usize> {
 }
 
 #[pyfunction]
+fn get_meaningful_line_indices_v2(lang: LangV2, src: &str) -> Vec<usize> {
+    use dracula::parse::v2::*;
+    let lang = match lang {
+        LangV2::Python => TreeSitterLanguage::Python,
+        LangV2::Rust => TreeSitterLanguage::Rust,
+        LangV2::C => TreeSitterLanguage::C,
+        LangV2::Java => TreeSitterLanguage::Java,
+        LangV2::Typescript => TreeSitterLanguage::Typescript,
+        LangV2::Javascript => TreeSitterLanguage::Javascript,
+        LangV2::Scala => TreeSitterLanguage::Scala,
+        LangV2::CSharp => TreeSitterLanguage::CSharp,
+        LangV2::Ruby => TreeSitterLanguage::Ruby,
+    };
+    let parser = Parser::new(lang);
+    parser
+        .and_then(|parser| {
+            let meaningless = parser.get_spans_of_meaningless_source(src)?;
+            Some(get_list_of_meaningful_lines(src, &meaningless))
+        })
+        .unwrap_or_default()
+}
+
+#[pyfunction]
 fn get_cleaned_source_code(lang: Lang, src: &str) -> String {
     lang.get_cleaned_source_code(src)
 }
@@ -78,6 +115,7 @@ fn pydracula(_py: Python<'_>, m: &types::PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(get_meaningful_line_indices, m)?)?;
     m.add_function(wrap_pyfunction!(get_cleaned_source_code, m)?)?;
     m.add_function(wrap_pyfunction!(get_count_of_meaningful_lines, m)?)?;
+    m.add_function(wrap_pyfunction!(get_meaningful_line_indices_v2, m)?)?;
     m.add_class::<Lang>()?;
     Ok(())
 }

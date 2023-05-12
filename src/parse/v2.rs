@@ -1,5 +1,5 @@
 #[derive(Debug)]
-enum TreeSitterLanguage {
+pub enum TreeSitterLanguage {
     C,
     Cpp,
     Rust,
@@ -144,7 +144,7 @@ pub fn get_list_of_meaningful_lines(
 }
 
 impl Parser {
-    fn new(lang: TreeSitterLanguage) -> Option<Self> {
+    pub fn new(lang: TreeSitterLanguage) -> Option<Self> {
         let mut parser = tree_sitter::Parser::new();
         let lang = match lang {
             TreeSitterLanguage::C => tree_sitter_c::language(),
@@ -166,7 +166,7 @@ impl Parser {
     }
 
     // returns a sorted list of meaningless sources (ascending order)
-    fn get_spans_of_meaningless_source(
+    pub fn get_spans_of_meaningless_source(
         &mut self,
         src: &str,
     ) -> Option<Vec<std::ops::Range<usize>>> {
@@ -235,6 +235,7 @@ fn meaningful_src_test() {
     display_lines(src, &lines);
 }
 
+#[cfg(test)]
 fn display_lines(src: &str, lines: &[usize]) {
     let mut line_index = 0;
     src.lines().enumerate().try_for_each(|(i, s)| {
