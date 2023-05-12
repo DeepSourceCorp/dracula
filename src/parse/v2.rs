@@ -5,6 +5,9 @@ enum TreeSitterLanguage {
     Rust,
     Java,
     Javascript,
+    JSX,
+    Typescript,
+    TSX,
     CSharp,
     Scala,
     Ruby,
@@ -79,6 +82,67 @@ where
     }
 }
 
+fn has_overlapping_range(
+    start: usize,
+    end: usize,
+    ranges: &mut Vec<std::ops::Range<usize>>,
+) -> Option<Vec<std::ops::Range<usize>>> {
+    let mut ret_ranges = vec![];
+    let mut remove_till = 0;
+    for range in ranges.iter() {
+        // println!("{}..{} :: {:?}", start, end, range);
+        if range.end < start {
+            // pop range
+            remove_till += 1;
+        } else if start <= range.end && range.start <= end {
+            let s = start.max(range.start) - start;
+            let e = end.min(range.end) - start;
+            ret_ranges.push(s..e);
+        } else if end < range.start {
+            break;
+        }
+    }
+    if ret_ranges.len() == 0 {
+        return None;
+    }
+    ranges.drain(..remove_till);
+    Some(ret_ranges)
+}
+
+pub fn get_list_of_meaningful_lines(
+    src: &str,
+    mut useless_ranges: Vec<std::ops::Range<usize>>,
+) -> Vec<usize> {
+    let lines = src.split_inclusive("\n");
+    let mut line_index = 1usize;
+    let mut start = 0usize;
+    let mut meaningful_lines = vec![];
+    lines.for_each(|line| {
+        let end = start + line.len();
+        if line.chars().all(char::is_whitespace) {
+            // blank line
+        } else if let Some(ranges) = has_overlapping_range(start, end, &mut useless_ranges) {
+            let mut is_line_meaningless = true;
+            // let mut idx = 0;
+            // # P1 Priority
+            // @TODO(swarnim): support multiple ranges per line
+            for range in ranges {
+                // got overlapping range
+                is_line_meaningless &= line[0..range.start].chars().all(char::is_whitespace)
+                    && line[range.end..].chars().all(char::is_whitespace);
+            }
+            if !is_line_meaningless {
+                meaningful_lines.push(line_index);
+            }
+        } else {
+            meaningful_lines.push(line_index);
+        }
+        start = end;
+        line_index += 1;
+    });
+    meaningful_lines
+}
+
 impl Parser {
     fn new(lang: TreeSitterLanguage) -> Option<Self> {
         let mut parser = tree_sitter::Parser::new();
@@ -93,58 +157,104 @@ impl Parser {
             TreeSitterLanguage::Ruby => tree_sitter_ruby::language(),
             TreeSitterLanguage::Python => tree_sitter_python::language(),
             TreeSitterLanguage::Go => tree_sitter_go::language(),
+            TreeSitterLanguage::JSX => tree_sitter_javascript::language(),
+            TreeSitterLanguage::Typescript => tree_sitter_typescript::language_typescript(),
+            TreeSitterLanguage::TSX => tree_sitter_typescript::language_tsx(),
         };
         parser.set_language(lang).ok()?;
         Some(Parser { parser })
     }
-    //     *
-    //     * *
-    //   * * * * *
-    // * * * * * * * *
-    //     * * * * *
 
-    fn get_meaningful_src(&mut self, src: &str) -> Option<String> {
+    // returns a sorted list of meaningless sources (ascending order)
+    fn get_spans_of_meaningless_source(
+        &mut self,
+        src: &str,
+    ) -> Option<Vec<std::ops::Range<usize>>> {
         let tree = self.parser.parse(src, None)?;
         let cursor = tree.walk();
+        let mut spans = vec![];
         traverse_iterative(cursor, Order::Pre, |x| {
-            println!(">> {} {:?}", x.kind(), x.byte_range());
-            println!();
-            println!();
-            println!();
-            if ["comment", "string_literal", "raw_string_literal"].contains(&x.kind()) {
+            // println!(">> {} {:?}", x.kind(), x.byte_range());
+            // println!();
+            // println!();
+            // println!();
+            if [
+                "comment",
+                "string",
+                "string_literal",
+                "raw_string_literal",
+                "line_comment",
+                "block_comment",
+            ]
+            .contains(&x.kind())
+            {
+                spans.push(x.byte_range());
                 false
             } else {
                 true
             }
         });
-        None
+        Some(spans)
     }
 }
 
 #[test]
 fn meaningful_src_test() {
-    // let mut p = Parser::new(TreeSitterLanguage::Cpp).unwrap();
-    // p.get_meaningful_src(
-    //     r#"
-    // #include "include"
-    // // thins
-    // int fn() {
-    //     char* s = "";
-    //     char* src = R"1(
-    //         this si 
-    //     )1";
-    // }
-    // /* this */
-    // "#,
-    // );
-    let mut p = Parser::new(TreeSitterLanguage::Javascript).unwrap();
-    p.get_meaningful_src(
-        r#"
-    function ft() {
-        let x = `this is a ${
-            10 // this is interesting
-        } string literal`;
+    let src = r#"
+    #include "include"
+    // thins
+    int fn() {
+        char* s = "";
+        char* src = R"1(
+            this si
+        )1";
     }
-    "#,
+    /* this */
+    "#;
+    let mut p = Parser::new(TreeSitterLanguage::Cpp).unwrap();
+    p.get_spans_of_meaningless_source(src);
+    let lines = get_list_of_meaningful_lines(
+        src,
+        p.get_spans_of_meaningless_source(src).unwrap_or_default(),
     );
+    display_lines(src, &lines);
+    let mut p = Parser::new(TreeSitterLanguage::Java).unwrap();
+    let src = r#"
+    class St {
+        /**/
+        public static void main() {
+            // test
+            var x = "";
+        }
+    }
+    "#;
+    let lines = get_list_of_meaningful_lines(
+        src,
+        p.get_spans_of_meaningless_source(src).unwrap_or_default(),
+    );
+    display_lines(src, &lines);
+}
+
+fn display_lines(src: &str, lines: &[usize]) {
+    let mut line_index = 0;
+    src.lines().enumerate().try_for_each(|(i, s)| {
+        if line_index >= lines.len() {
+            return None;
+        }
+        if lines[line_index] == i + 1 {
+            line_index += 1;
+            println!("{s}");
+        }
+        return Some(());
+    });
+}
+
+#[cfg(test)]
+fn display_ranges(src: &str, ranges: &Option<Vec<std::ops::Range<usize>>>) {
+    for range in ranges.clone().unwrap() {
+        println!(
+            ">>>>>>>>>>>>>>>>>>\n{}\n<<<<<<<<<<<<<<<<<<\n",
+            &src[range.start..range.end]
+        );
+    }
 }
