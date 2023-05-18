@@ -1,6 +1,7 @@
 #[derive(Debug)]
 pub enum TreeSitterLanguage {
     C,
+    Kotlin,
     Cpp,
     Rust,
     Java,
@@ -16,6 +17,7 @@ pub enum TreeSitterLanguage {
 }
 
 pub struct Parser {
+    lang: TreeSitterLanguage,
     parser: tree_sitter::Parser,
 }
 
@@ -123,13 +125,17 @@ pub fn get_list_of_meaningful_lines(
             // blank line
         } else if let Some(ranges) = has_overlapping_range(start, end, &mut useless_ranges) {
             let mut is_line_meaningless = true;
-            // let mut idx = 0;
-            // # P1 Priority
-            // @TODO(swarnim): support multiple ranges per line
-            for range in ranges {
-                // got overlapping range
-                is_line_meaningless &= line[0..range.start].chars().all(char::is_whitespace)
-                    && line[range.end..].chars().all(char::is_whitespace);
+            let mut ranges = ranges.into_iter();
+            if let Some(mut curr) = ranges.next() {
+                is_line_meaningless &= line[0..curr.start].chars().all(char::is_whitespace);
+                for next in ranges {
+                    // got overlapping range
+                    is_line_meaningless &= next.start > line.len()
+                        || line[curr.end..next.start].chars().all(char::is_whitespace);
+                    curr = next;
+                }
+                is_line_meaningless &=
+                    curr.end > line.len() || line[curr.end..].chars().all(char::is_whitespace);
             }
             if !is_line_meaningless {
                 meaningful_lines.push(line_index);
@@ -146,7 +152,7 @@ pub fn get_list_of_meaningful_lines(
 impl Parser {
     pub fn new(lang: TreeSitterLanguage) -> Option<Self> {
         let mut parser = tree_sitter::Parser::new();
-        let lang = match lang {
+        let tlang = match lang {
             TreeSitterLanguage::C => tree_sitter_c::language(),
             TreeSitterLanguage::Cpp => tree_sitter_cpp::language(),
             TreeSitterLanguage::Rust => tree_sitter_rust::language(),
@@ -160,9 +166,10 @@ impl Parser {
             TreeSitterLanguage::JSX => tree_sitter_javascript::language(),
             TreeSitterLanguage::Typescript => tree_sitter_typescript::language_typescript(),
             TreeSitterLanguage::TSX => tree_sitter_typescript::language_tsx(),
+            TreeSitterLanguage::Kotlin => tree_sitter_kotlin::language(),
         };
-        parser.set_language(lang).ok()?;
-        Some(Parser { parser })
+        parser.set_language(tlang).ok()?;
+        Some(Parser { lang, parser })
     }
 
     // returns a sorted list of meaningless sources (ascending order)
@@ -174,10 +181,20 @@ impl Parser {
         let cursor = tree.walk();
         let mut spans = vec![];
         traverse_iterative(cursor, Order::Pre, |x| {
-            // println!(">> {} {:?}", x.kind(), x.byte_range());
+            // println!(">> {} {:?}", x.to_sexp(), x.byte_range());
+            // println!("");
             // println!();
-            // println!();
-            // println!();
+            // println!("");
+            if matches!(self.lang, TreeSitterLanguage::Kotlin)
+                && x.kind() == "function_value_parameters"
+            {
+                return if x.to_sexp().contains("expression") {
+                    true
+                } else {
+                    spans.push(x.byte_range());
+                    false
+                };
+            }
             if [
                 "comment",
                 "string",
@@ -185,6 +202,10 @@ impl Parser {
                 "raw_string_literal",
                 "line_comment",
                 "block_comment",
+                "formal_parameters",
+                "=",
+                "(",
+                ")",
             ]
             .contains(&x.kind())
             {
@@ -222,11 +243,39 @@ fn meaningful_src_test() {
     let src = r#"
     class St {
         /**/
-        public static void main() {
+        public static void main(
+            // this is interesting
+            String args[]
+        ) {
             // test
             var x = "";
         }
     }
+    "#;
+    let lines = get_list_of_meaningful_lines(
+        src,
+        p.get_spans_of_meaningless_source(src).unwrap_or_default(),
+    );
+    display_lines(src, &lines);
+    let mut p = Parser::new(TreeSitterLanguage::Kotlin).unwrap();
+    let src = r#"
+        fun /*is this code valid*/ a(
+            x: Int = 1,
+            // comment here!
+            y: Int = let {
+                return Unit
+            },
+            z: Int = 3
+        ) = 
+        Unit
+        fun /*is this code valid*/ a(
+            x: Int = 1,
+            // comment here!
+            y: Int = 2,
+            z: Int = 3
+        )
+        = 
+        Unit
     "#;
     let lines = get_list_of_meaningful_lines(
         src,
