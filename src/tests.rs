@@ -46,9 +46,7 @@ mod simple_c {
 
 #[cfg(test)]
 mod simple_python {
-    use crate::count::{
-        self, get_cleaned_source_code, get_count_of_meaningful_lines, get_meaningful_line_indices,
-    };
+    use crate::count::{self, get_cleaned_source_code};
     use crate::langs::*;
     use crate::parse::v2::get_lines_without_ranges;
     use crate::parse::v2::Parser;
@@ -380,7 +378,7 @@ mod simple_rust {
     }
     #[test]
     fn run_on_self() {
-        // run `dracula` vs `meaningful_lines_in_src_using_ast`
+        // run `dracula_v2` vs `meaningful_lines_in_src_using_ast`
         // for as many rust files as possible
         // for starters all of this project should be a good start
         let src_files = [
@@ -413,5 +411,106 @@ mod simple_rust {
                     })
                     .for_each(|(x, y)| assert_eq!(x, y));
             });
+    }
+}
+
+#[cfg(test)]
+mod simple_js {
+    use crate::parse::v2::get_lines_without_ranges;
+    use crate::parse::v2::Parser;
+    use crate::parse::v2::TreeSitterLanguage;
+
+    #[test]
+    fn try_parse() {
+        let src = r#"
+        function test() { // :01
+            // empty
+            let x = 10; // :02
+            let y = ` // :03
+                /* this is part of the string? */ // :04 as this is template string
+            ${ // :05
+            // this is empty line
+            }
+            `; // :06
+        }
+        "#;
+        let cnt_executable = {
+            let mut parser = Parser::new(TreeSitterLanguage::Javascript).unwrap();
+            let ranges = parser.non_executable_src_spans(src).unwrap();
+            let lines = get_lines_without_ranges(src, ranges);
+            // crate::parse::v2::display_lines(src, &lines);
+            lines.len()
+        };
+        assert_eq!(cnt_executable, 6); // we can now ignore parens and curlies
+    }
+}
+
+#[cfg(test)]
+mod simple_jsx {
+    use crate::parse::v2::get_lines_without_ranges;
+    use crate::parse::v2::Parser;
+    use crate::parse::v2::TreeSitterLanguage;
+
+    #[test]
+    fn try_parse() {
+        let src = r#"
+        function test() {
+        return <Test>
+        {      
+            /*
+            <!--
+                this type of comment doesn't work in jsx
+            -->
+            */
+        }
+            {
+                /* ** Ignore comment
+                */
+                x 
+                + yy
+            }
+        </Test>;
+        }
+        "#;
+        let cnt_executable = {
+            let mut parser = Parser::new(TreeSitterLanguage::Javascript).unwrap();
+            let ranges = parser.non_executable_src_spans(src).unwrap();
+            let lines = get_lines_without_ranges(src, ranges);
+            // crate::parse::v2::display_lines(src, &lines);
+            lines.len()
+        };
+        assert_eq!(cnt_executable, 5); // we can now ignore parens and curlies
+    }
+}
+
+#[cfg(test)]
+mod simple_ts {
+    use crate::parse::v2::get_lines_without_ranges;
+    use crate::parse::v2::Parser;
+    use crate::parse::v2::TreeSitterLanguage;
+
+    #[test]
+    fn try_parse() {
+        let src = r#"
+        function test(_: any) { // :01
+            // empty
+            let x: // :02
+                Ty = 10; // :03
+            let y = ` // :04
+                /* this is part of the string? */ // :04 as this is template string
+            ${ // :06
+            // this is empty line
+            }
+            `; // :07
+        }
+        "#;
+        let cnt_executable = {
+            let mut parser = Parser::new(TreeSitterLanguage::Typescript).unwrap();
+            let ranges = parser.non_executable_src_spans(src).unwrap();
+            let lines = get_lines_without_ranges(src, ranges);
+            // crate::parse::v2::display_lines(src, &lines);
+            lines.len()
+        };
+        assert_eq!(cnt_executable, 7); // we can now ignore parens and curlies
     }
 }
