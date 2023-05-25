@@ -2,11 +2,13 @@
 mod simple_c {
     use crate::count;
     use crate::langs::*;
+    use crate::parse::v2::get_lines_without_ranges;
+    use crate::parse::v2::Parser;
+    use crate::parse::v2::TreeSitterLanguage;
 
     #[test]
     fn try_parse() {
-        let cnt = count::get_count_of_meaningful_lines::<C>(
-            r#"
+        let src = r#"
             // The default entry point for C programs
             // --------------------------------------
             // This generally requires C runtime for
@@ -24,16 +26,33 @@ mod simple_c {
                  seems to work as well */
                 return 0;
             }
-        "#,
-        );
+        "#;
+        // let lines = count::get_meaningful_line_indices::<C>(src)
+        //     .flatten()
+        //     .collect::<Vec<usize>>();
+        // crate::parse::v2::display_lines(src, &lines);
+        let cnt = count::get_count_of_meaningful_lines::<C>(src);
+        let cnt_executable = {
+            let mut parser = Parser::new(TreeSitterLanguage::C).unwrap();
+            let ranges = parser.non_executable_src_spans(src).unwrap();
+            let lines = get_lines_without_ranges(src, ranges);
+            // crate::parse::v2::display_lines(src, &lines);
+            lines.len()
+        };
         assert_eq!(cnt, 10);
+        assert_eq!(cnt_executable, 9); // we can now ignore parens and curlies
     }
 }
 
 #[cfg(test)]
 mod simple_python {
-    use crate::count::{get_cleaned_source_code, get_count_of_meaningful_lines};
+    use crate::count::{
+        self, get_cleaned_source_code, get_count_of_meaningful_lines, get_meaningful_line_indices,
+    };
     use crate::langs::*;
+    use crate::parse::v2::get_lines_without_ranges;
+    use crate::parse::v2::Parser;
+    use crate::parse::v2::TreeSitterLanguage;
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -46,7 +65,8 @@ mod simple_python {
                 pass
             # some top level comments
             def main():
-                print("s");"""\""""""
+                print("s"); # we can't provide illegal grammar any more
+                """
                 Multi-line Comments
                 """
                 print(x)
@@ -54,7 +74,20 @@ mod simple_python {
                 Multi-line Comments
                 """
             "#;
-        assert_eq!(get_count_of_meaningful_lines::<Python>(src), 5)
+        // let lines = count::get_meaningful_line_indices::<Python>(src)
+        //     .flatten()
+        //     .collect::<Vec<usize>>();
+        // crate::parse::v2::display_lines(src, &lines);
+        let cnt = count::get_count_of_meaningful_lines::<Python>(src);
+        let cnt_executable = {
+            let mut parser = Parser::new(TreeSitterLanguage::Python).unwrap();
+            let ranges = parser.non_executable_src_spans(src).unwrap();
+            let lines = get_lines_without_ranges(src, ranges);
+            // crate::parse::v2::display_lines(src, &lines);
+            lines.len()
+        };
+        assert_eq!(cnt, 5);
+        assert_eq!(cnt_executable, 5);
     }
 
     #[test]
@@ -183,6 +216,7 @@ mod simple_rust {
 
     use crate::count;
     use crate::langs::*;
+    use crate::parse::v2::{get_lines_without_ranges, Parser, TreeSitterLanguage};
 
     #[test]
     fn try_parse() {
@@ -202,8 +236,16 @@ mod simple_rust {
         }
     "##;
         let cnt = count::get_count_of_meaningful_lines::<Rust>(src);
+        let cnt_executable = {
+            let mut parser = Parser::new(TreeSitterLanguage::Rust).unwrap();
+            let ranges = parser.non_executable_src_spans(src).unwrap();
+            let lines = get_lines_without_ranges(src, ranges);
+            // crate::parse::v2::display_lines(src, &lines);
+            lines.len()
+        };
         assert_eq!(cnt, 6);
         assert_eq!(cnt, meaningful_lines_in_src_using_ast(src).len());
+        assert_eq!(cnt_executable, 6);
     }
 
     #[test]
@@ -250,6 +292,14 @@ mod simple_rust {
         let cnt = count::get_count_of_meaningful_lines::<Rust>(src);
         assert_eq!(cnt, 22);
         assert_eq!(cnt, meaningful_lines_in_src_using_ast(src).len());
+        let cnt_executable = {
+            let mut parser = Parser::new(TreeSitterLanguage::Rust).unwrap();
+            let ranges = parser.non_executable_src_spans(src).unwrap();
+            let lines = get_lines_without_ranges(src, ranges);
+            // crate::parse::v2::display_lines(src, &lines);
+            lines.len()
+        };
+        assert_eq!(cnt_executable, 22);
         let cleaned_src = count::get_cleaned_source_code::<Rust>(src).unwrap();
         assert_eq!(
             cleaned_src,
@@ -278,6 +328,7 @@ mod simple_rust {
         );
     }
 
+    /// utility function to verify the parse was accurate for rust
     fn meaningful_lines_in_src_using_ast(src: &str) -> Vec<usize> {
         let rs_src = ra_ap_syntax::SourceFile::parse(src);
         assert!(rs_src.errors().len() == 0);
@@ -298,6 +349,8 @@ mod simple_rust {
                             SyntaxKind::COMMENT,
                             SyntaxKind::L_CURLY,
                             SyntaxKind::R_CURLY,
+                            SyntaxKind::L_PAREN,
+                            SyntaxKind::R_PAREN,
                             SyntaxKind::STRING,
                             SyntaxKind::BYTE_STRING,
                         ]
@@ -320,7 +373,7 @@ mod simple_rust {
                 Some(())
             });
             if ue.saturating_sub(ub) > 0 {
-                v.push(idx);
+                v.push(idx + 1);
             }
         }
         v
@@ -348,9 +401,16 @@ mod simple_rust {
             .map(|x| std::fs::read_to_string(dbg!(x)).ok())
             .flatten()
             .for_each(|src| {
-                count::get_meaningful_line_indices::<Rust>(&src)
-                    .flatten()
-                    .zip(meaningful_lines_in_src_using_ast(&src).into_iter())
+                meaningful_lines_in_src_using_ast(&src)
+                    .into_iter()
+                    // .zip(meaningful_lines_in_src_using_ast(&src).into_iter())
+                    .zip({
+                        let mut parser = Parser::new(TreeSitterLanguage::Rust).unwrap();
+                        let ranges = parser.non_executable_src_spans(&src).unwrap();
+                        let lines = get_lines_without_ranges(&src, ranges);
+                        // crate::parse::v2::display_lines(&src, &lines);
+                        lines
+                    })
                     .for_each(|(x, y)| assert_eq!(x, y));
             });
     }

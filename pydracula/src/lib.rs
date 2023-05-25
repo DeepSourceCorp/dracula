@@ -77,7 +77,7 @@ fn get_meaningful_line_indices(lang: Lang, src: &str) -> Vec<usize> {
 }
 
 #[pyfunction]
-fn get_meaningful_line_indices_v2(lang: LangV2, src: &str) -> Vec<usize> {
+fn get_lines_with_executable_code(lang: LangV2, src: &str) -> Vec<usize> {
     use dracula::parse::v2::*;
     let lang = match lang {
         LangV2::Python => TreeSitterLanguage::Python,
@@ -93,8 +93,8 @@ fn get_meaningful_line_indices_v2(lang: LangV2, src: &str) -> Vec<usize> {
     let parser = Parser::new(lang);
     parser
         .and_then(|parser| {
-            let meaningless = parser.get_spans_of_meaningless_source(src)?;
-            Some(get_list_of_meaningful_lines(src, &meaningless))
+            let meaningless = parser.non_executable_src_spans(src)?;
+            Some(get_lines_without_ranges(src, &meaningless))
         })
         .unwrap_or_default()
 }
@@ -115,7 +115,7 @@ fn pydracula(_py: Python<'_>, m: &types::PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(get_meaningful_line_indices, m)?)?;
     m.add_function(wrap_pyfunction!(get_cleaned_source_code, m)?)?;
     m.add_function(wrap_pyfunction!(get_count_of_meaningful_lines, m)?)?;
-    m.add_function(wrap_pyfunction!(get_meaningful_line_indices_v2, m)?)?;
+    m.add_function(wrap_pyfunction!(get_lines_with_executable_code, m)?)?;
     m.add_class::<Lang>()?;
     Ok(())
 }

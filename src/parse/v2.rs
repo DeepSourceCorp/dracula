@@ -111,10 +111,7 @@ fn has_overlapping_range(
     Some(ret_ranges)
 }
 
-pub fn get_list_of_meaningful_lines(
-    src: &str,
-    mut useless_ranges: Vec<std::ops::Range<usize>>,
-) -> Vec<usize> {
+pub fn get_lines_without_ranges(src: &str, mut ranges: Vec<std::ops::Range<usize>>) -> Vec<usize> {
     let lines = src.split_inclusive("\n");
     let mut line_index = 1usize;
     let mut start = 0usize;
@@ -123,9 +120,9 @@ pub fn get_list_of_meaningful_lines(
         let end = start + line.len();
         if line.chars().all(char::is_whitespace) {
             // blank line
-        } else if let Some(ranges) = has_overlapping_range(start, end, &mut useless_ranges) {
+        } else if let Some(overlapping_ranges) = has_overlapping_range(start, end, &mut ranges) {
             let mut is_line_meaningless = true;
-            let mut ranges = ranges.into_iter();
+            let mut ranges = overlapping_ranges.into_iter();
             if let Some(mut curr) = ranges.next() {
                 is_line_meaningless &= line[0..curr.start].chars().all(char::is_whitespace);
                 for next in ranges {
@@ -157,13 +154,14 @@ impl Parser {
             TreeSitterLanguage::Cpp => tree_sitter_cpp::language(),
             TreeSitterLanguage::Rust => tree_sitter_rust::language(),
             TreeSitterLanguage::Java => tree_sitter_java::language(),
-            TreeSitterLanguage::Javascript => tree_sitter_javascript::language(),
+            TreeSitterLanguage::Javascript | TreeSitterLanguage::JSX => {
+                tree_sitter_javascript::language()
+            }
             TreeSitterLanguage::CSharp => tree_sitter_c_sharp::language(),
             TreeSitterLanguage::Scala => tree_sitter_scala::language(),
             TreeSitterLanguage::Ruby => tree_sitter_ruby::language(),
             TreeSitterLanguage::Python => tree_sitter_python::language(),
             TreeSitterLanguage::Go => tree_sitter_go::language(),
-            TreeSitterLanguage::JSX => tree_sitter_javascript::language(),
             TreeSitterLanguage::Typescript => tree_sitter_typescript::language_typescript(),
             TreeSitterLanguage::TSX => tree_sitter_typescript::language_tsx(),
             TreeSitterLanguage::Kotlin => tree_sitter_kotlin::language(),
@@ -172,29 +170,30 @@ impl Parser {
         Some(Parser { lang, parser })
     }
 
-    // returns a sorted list of meaningless sources (ascending order)
-    pub fn get_spans_of_meaningless_source(
-        &mut self,
-        src: &str,
-    ) -> Option<Vec<std::ops::Range<usize>>> {
+    /// returns a sorted list of ranges within sources that can't be executed, aka them being marked as
+    /// uncoverd by test_coverage doesn't make sense (ascending order)
+    pub fn non_executable_src_spans(&mut self, src: &str) -> Option<Vec<std::ops::Range<usize>>> {
         let tree = self.parser.parse(src, None)?;
         let cursor = tree.walk();
-        let mut spans = vec![];
+        let mut non_executable_src_spans = vec![];
         traverse_iterative(cursor, Order::Pre, |x| {
             // println!(">> {} {:?}", x.to_sexp(), x.byte_range());
-            // println!("");
             // println!();
-            // println!("");
+            // println!();
             if matches!(self.lang, TreeSitterLanguage::Kotlin)
                 && x.kind() == "function_value_parameters"
             {
+                // if the function value paramters are non simple as in,
+                // they have complex expressions that require execution
+                // then don't mark them as useless
                 return if x.to_sexp().contains("expression") {
                     true
                 } else {
-                    spans.push(x.byte_range());
+                    non_executable_src_spans.push(x.byte_range());
                     false
                 };
             }
+            // kinds of values we mark as non executable
             if [
                 "comment",
                 "string",
@@ -203,19 +202,20 @@ impl Parser {
                 "line_comment",
                 "block_comment",
                 "formal_parameters",
-                "=",
                 "(",
+                "{",
+                "}",
                 ")",
             ]
             .contains(&x.kind())
             {
-                spans.push(x.byte_range());
+                non_executable_src_spans.push(x.byte_range());
                 false
             } else {
                 true
             }
         });
-        Some(spans)
+        Some(non_executable_src_spans)
     }
 }
 
@@ -233,11 +233,8 @@ fn meaningful_src_test() {
     /* this */
     "#;
     let mut p = Parser::new(TreeSitterLanguage::Cpp).unwrap();
-    p.get_spans_of_meaningless_source(src);
-    let lines = get_list_of_meaningful_lines(
-        src,
-        p.get_spans_of_meaningless_source(src).unwrap_or_default(),
-    );
+    p.non_executable_src_spans(src);
+    let lines = get_lines_without_ranges(src, p.non_executable_src_spans(src).unwrap_or_default());
     display_lines(src, &lines);
     let mut p = Parser::new(TreeSitterLanguage::Java).unwrap();
     let src = r#"
@@ -252,10 +249,7 @@ fn meaningful_src_test() {
         }
     }
     "#;
-    let lines = get_list_of_meaningful_lines(
-        src,
-        p.get_spans_of_meaningless_source(src).unwrap_or_default(),
-    );
+    let lines = get_lines_without_ranges(src, p.non_executable_src_spans(src).unwrap_or_default());
     display_lines(src, &lines);
     let mut p = Parser::new(TreeSitterLanguage::Kotlin).unwrap();
     let src = r#"
@@ -277,15 +271,12 @@ fn meaningful_src_test() {
         = 
         Unit
     "#;
-    let lines = get_list_of_meaningful_lines(
-        src,
-        p.get_spans_of_meaningless_source(src).unwrap_or_default(),
-    );
+    let lines = get_lines_without_ranges(src, p.non_executable_src_spans(src).unwrap_or_default());
     display_lines(src, &lines);
 }
 
 #[cfg(test)]
-fn display_lines(src: &str, lines: &[usize]) {
+pub fn display_lines(src: &str, lines: &[usize]) {
     let mut line_index = 0;
     src.lines().enumerate().try_for_each(|(i, s)| {
         if line_index >= lines.len() {
@@ -300,7 +291,7 @@ fn display_lines(src: &str, lines: &[usize]) {
 }
 
 #[cfg(test)]
-fn display_ranges(src: &str, ranges: &Option<Vec<std::ops::Range<usize>>>) {
+pub fn display_ranges(src: &str, ranges: &Option<Vec<std::ops::Range<usize>>>) {
     for range in ranges.clone().unwrap() {
         println!(
             ">>>>>>>>>>>>>>>>>>\n{}\n<<<<<<<<<<<<<<<<<<\n",
