@@ -497,7 +497,7 @@ mod simple_ts {
             let x: // :02
                 Ty = 10; // :03
             let y = ` // :04
-                /* this is part of the string? */ // :04 as this is template string
+                /* this is part of the string? */ // :05 as this is template string
             ${ // :06
             // this is empty line
             }
