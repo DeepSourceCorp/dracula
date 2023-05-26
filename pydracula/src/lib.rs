@@ -11,13 +11,16 @@ enum Lang {
 
 #[pyclass]
 #[derive(Debug, Clone, Copy)]
-enum LangV2 {
+enum Language {
     Python,
     Rust,
     C,
+    Cpp,
     Java,
     Typescript,
+    Tsx,
     Javascript,
+    Jsx,
     Scala,
     CSharp,
     Ruby,
@@ -77,26 +80,32 @@ fn get_meaningful_line_indices(lang: Lang, src: &str) -> Vec<usize> {
 }
 
 #[pyfunction]
-fn get_lines_with_executable_code(lang: LangV2, src: &str) -> Vec<usize> {
+/// This function gets the list of lines that can be assumed to be meaningful/executable
+/// from a test-coverage or similar standpoint.
+///
+/// Further returns the list of line indexes starting from index 1.
+///
+/// If the parsing fails, then this returns None
+fn get_lines_with_executable_code(lang: Language, src: &str) -> Option<Vec<usize>> {
     use dracula::parse::v2::*;
-    let lang = match lang {
-        LangV2::Python => TreeSitterLanguage::Python,
-        LangV2::Rust => TreeSitterLanguage::Rust,
-        LangV2::C => TreeSitterLanguage::C,
-        LangV2::Java => TreeSitterLanguage::Java,
-        LangV2::Typescript => TreeSitterLanguage::Typescript,
-        LangV2::Javascript => TreeSitterLanguage::Javascript,
-        LangV2::Scala => TreeSitterLanguage::Scala,
-        LangV2::CSharp => TreeSitterLanguage::CSharp,
-        LangV2::Ruby => TreeSitterLanguage::Ruby,
+    let treesitter_lang = match lang {
+        Language::Python => TreeSitterLanguage::Python,
+        Language::Rust => TreeSitterLanguage::Rust,
+        Language::C => TreeSitterLanguage::C,
+        Language::Cpp => TreeSitterLanguage::Cpp,
+        Language::Java => TreeSitterLanguage::Java,
+        Language::Typescript => TreeSitterLanguage::Typescript,
+        Language::Tsx => TreeSitterLanguage::TSX,
+        Language::Javascript | Language::Jsx => TreeSitterLanguage::Javascript,
+        // currently untested consider waiting for proper tests to be merged before using
+        Language::Scala => TreeSitterLanguage::Scala,
+        Language::CSharp => TreeSitterLanguage::CSharp,
+        Language::Ruby => TreeSitterLanguage::Ruby,
+        Language::Go => TreeSitterLanguage::Go,
     };
-    let parser = Parser::new(lang);
-    parser
-        .and_then(|parser| {
-            let meaningless = parser.non_executable_src_spans(src)?;
-            Some(get_lines_without_ranges(src, &meaningless))
-        })
-        .unwrap_or_default()
+    Parser::new(treesitter_lang)
+        .and_then(|parser| parser.non_executable_src_spans(src))
+        .map(|spans| get_lines_without_ranges(src, &spans))
 }
 
 #[pyfunction]

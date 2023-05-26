@@ -5,7 +5,9 @@ pub enum TreeSitterLanguage {
     Cpp,
     Rust,
     Java,
+    /// same as JSX
     Javascript,
+    /// same as Javascript
     JSX,
     Typescript,
     TSX,
@@ -112,7 +114,7 @@ fn has_overlapping_range(
 }
 
 pub fn get_lines_without_ranges(src: &str, mut ranges: Vec<std::ops::Range<usize>>) -> Vec<usize> {
-    let lines = src.split_inclusive("\n");
+    let lines = src.split_inclusive('\n');
     let mut line_index = 1usize;
     let mut start = 0usize;
     let mut meaningful_lines = vec![];
