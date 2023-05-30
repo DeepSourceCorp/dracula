@@ -27,10 +27,6 @@ mod simple_c {
                 return 0;
             }
         "#;
-        // let lines = count::get_meaningful_line_indices::<C>(src)
-        //     .flatten()
-        //     .collect::<Vec<usize>>();
-        // crate::parse::v2::display_lines(src, &lines);
         let cnt = count::get_count_of_meaningful_lines::<C>(src);
         let cnt_executable = {
             let mut parser = Parser::new(TreeSitterLanguage::C).unwrap();
@@ -72,15 +68,16 @@ mod simple_python {
                 Multi-line Comments
                 """
             "#;
-        // let lines = count::get_meaningful_line_indices::<Python>(src)
-        //     .flatten()
-        //     .collect::<Vec<usize>>();
-        // crate::parse::v2::display_lines(src, &lines);
         let cnt = count::get_count_of_meaningful_lines::<Python>(src);
         let cnt_executable = {
             let mut parser = Parser::new(TreeSitterLanguage::Python).unwrap();
             let ranges = parser.non_executable_src_spans(src).unwrap();
             let lines = get_lines_without_ranges(src, ranges);
+            // assert the line indicies
+            count::get_meaningful_line_indices::<Python>(src)
+                .flatten()
+                .zip(&lines)
+                .for_each(|(x, &y)| assert_eq!(x + 1, y));
             // crate::parse::v2::display_lines(src, &lines);
             lines.len()
         };
@@ -238,6 +235,11 @@ mod simple_rust {
             let mut parser = Parser::new(TreeSitterLanguage::Rust).unwrap();
             let ranges = parser.non_executable_src_spans(src).unwrap();
             let lines = get_lines_without_ranges(src, ranges);
+            // assert the line indicies
+            count::get_meaningful_line_indices::<Rust>(src)
+                .flatten()
+                .zip(&lines)
+                .for_each(|(x, &y)| assert_eq!(x + 1, y));
             // crate::parse::v2::display_lines(src, &lines);
             lines.len()
         };
@@ -294,6 +296,11 @@ mod simple_rust {
             let mut parser = Parser::new(TreeSitterLanguage::Rust).unwrap();
             let ranges = parser.non_executable_src_spans(src).unwrap();
             let lines = get_lines_without_ranges(src, ranges);
+            // assert the line indicies
+            count::get_meaningful_line_indices::<Rust>(src)
+                .flatten()
+                .zip(&lines)
+                .for_each(|(x, &y)| assert_eq!(x + 1, y));
             // crate::parse::v2::display_lines(src, &lines);
             lines.len()
         };
@@ -401,15 +408,22 @@ mod simple_rust {
             .for_each(|src| {
                 meaningful_lines_in_src_using_ast(&src)
                     .into_iter()
-                    // .zip(meaningful_lines_in_src_using_ast(&src).into_iter())
                     .zip({
                         let mut parser = Parser::new(TreeSitterLanguage::Rust).unwrap();
                         let ranges = parser.non_executable_src_spans(&src).unwrap();
                         let lines = get_lines_without_ranges(&src, ranges);
-                        // crate::parse::v2::display_lines(&src, &lines);
                         lines
                     })
                     .for_each(|(x, y)| assert_eq!(x, y));
+                count::get_meaningful_line_indices::<Rust>(&src)
+                    .flatten()
+                    .zip({
+                        let mut parser = Parser::new(TreeSitterLanguage::Rust).unwrap();
+                        let ranges = parser.non_executable_src_spans(&src).unwrap();
+                        let lines = get_lines_without_ranges(&src, ranges);
+                        lines
+                    })
+                    .for_each(|(x, y)| assert_eq!(x + 1, y));
             });
     }
 }
