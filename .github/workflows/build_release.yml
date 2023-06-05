@@ -96,41 +96,41 @@ jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/
         name: wheels-linux
         path: dist
 
-  linux-cross:
-    runs-on: [self-hosted, charmander]
-    strategy:
-      matrix:
-        target: [aarch64, armv7, s390x, ppc64le, ppc64]
-    steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-python@v4
-      with:
-        python-version: 3.9
-    - name: Build wheels
-      uses: PyO3/maturin-action@v1
-      with:
-        target: ${{ matrix.target }}
-        manylinux: auto
-        args: --release --out dist -m pydracula/Cargo.toml
-    - uses: uraimo/run-on-arch-action@v2.5.0
-      if: matrix.target != 'ppc64'
-      name: Install built wheel
-      with:
-        arch: ${{ matrix.target }}
-        distro: ubuntu20.04
-        githubToken: ${{ github.token }}
-        install: |
-          apt-get update
-          apt-get install -y --no-install-recommends python3 python3-pip
-          pip3 install -U pip
-        run: |
-          pip3 install ./dist/pydracula-*.whl --force-reinstall
-          python3 -c "import pydracula; pydracula.Lang"
-    - name: Upload wheels
-      uses: actions/upload-artifact@v3
-      with:
-        name: wheels-linux-cross
-        path: dist
+  # linux-cross:
+  #   runs-on: [self-hosted, charmander]
+  #   strategy:
+  #     matrix:
+  #       target: [aarch64, armv7, s390x, ppc64le, ppc64]
+  #   steps:
+  #   - uses: actions/checkout@v3
+  #   - uses: actions/setup-python@v4
+  #     with:
+  #       python-version: 3.9
+  #   - name: Build wheels
+  #     uses: PyO3/maturin-action@v1
+  #     with:
+  #       target: ${{ matrix.target }}
+  #       manylinux: auto
+  #       args: --release --out dist -m pydracula/Cargo.toml
+  #   - uses: uraimo/run-on-arch-action@v2.5.0
+  #     if: matrix.target != 'ppc64'
+  #     name: Install built wheel
+  #     with:
+  #       arch: ${{ matrix.target }}
+  #       distro: ubuntu20.04
+  #       githubToken: ${{ github.token }}
+  #       install: |
+  #         apt-get update
+  #         apt-get install -y --no-install-recommends python3 python3-pip
+  #         pip3 install -U pip
+  #       run: |
+  #         pip3 install ./dist/pydracula-*.whl --force-reinstall
+  #         python3 -c "import pydracula; pydracula.Lang"
+  #   - name: Upload wheels
+  #     uses: actions/upload-artifact@v3
+  #     with:
+  #       name: wheels-linux-cross
+  #       path: dist
 
   musllinux:
     runs-on: [self-hosted, charmander]
@@ -168,48 +168,48 @@ jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/
         name: wheels-musllinux
         path: dist
 
-  musllinux-cross:
-    runs-on: [self-hosted, charmander]
-    strategy:
-      matrix:
-        platform:
-          - target: aarch64-unknown-linux-musl
-            arch: aarch64
-          - target: armv7-unknown-linux-musleabihf
-            arch: armv7
-    steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-python@v4
-      with:
-        python-version: 3.9
-    - name: Build wheels
-      uses: PyO3/maturin-action@v1
-      with:
-        target: ${{ matrix.platform.target }}
-        manylinux: musllinux_1_2
-        args: --release --out dist -m pydracula/Cargo.toml
-    - uses: uraimo/run-on-arch-action@v2.5.0
-      name: Install built wheel
-      with:
-        arch: ${{ matrix.platform.arch }}
-        distro: alpine_latest
-        githubToken: ${{ github.token }}
-        install: |
-          apk add py3-pip
-          pip3 install -U pip
-        run: |
-          pip install ./dist/pydracula-*.whl --force-reinstall
-          python -c "import pydracula; pydracula.Lang"
-    - name: Upload wheels
-      uses: actions/upload-artifact@v3
-      with:
-        name: wheels-musllinux-cross
-        path: dist
+  # musllinux-cross:
+  #   runs-on: [self-hosted, charmander]
+  #   strategy:
+  #     matrix:
+  #       platform:
+  #         - target: aarch64-unknown-linux-musl
+  #           arch: aarch64
+  #         - target: armv7-unknown-linux-musleabihf
+  #           arch: armv7
+  #   steps:
+  #   - uses: actions/checkout@v3
+  #   - uses: actions/setup-python@v4
+  #     with:
+  #       python-version: 3.9
+  #   - name: Build wheels
+  #     uses: PyO3/maturin-action@v1
+  #     with:
+  #       target: ${{ matrix.platform.target }}
+  #       manylinux: musllinux_1_2
+  #       args: --release --out dist -m pydracula/Cargo.toml
+  #   - uses: uraimo/run-on-arch-action@v2.5.0
+  #     name: Install built wheel
+  #     with:
+  #       arch: ${{ matrix.platform.arch }}
+  #       distro: alpine_latest
+  #       githubToken: ${{ github.token }}
+  #       install: |
+  #         apk add py3-pip
+  #         pip3 install -U pip
+  #       run: |
+  #         pip install ./dist/pydracula-*.whl --force-reinstall
+  #         python -c "import pydracula; pydracula.Lang"
+  #   - name: Upload wheels
+  #     uses: actions/upload-artifact@v3
+  #     with:
+  #       name: wheels-musllinux-cross
+  #       path: dist
 
   release:
     name: Release
     runs-on: [self-hosted, charmander]
-    needs: [ linux, linux-cross, musllinux, musllinux-cross ]
+    needs: [ linux, musllinux ]
     steps:
       - uses: actions/download-artifact@v3 # download all artifacts
       - uses: actions/setup-python@v4
@@ -221,15 +221,15 @@ jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
           pip install --upgrade twine
-          pushd wheels-musllinux-cross
-          twine upload --skip-existing *
-          popd
+          # pushd wheels-musllinux-cross
+          # twine upload --skip-existing *
+          # popd
           pushd wheels-musllinux
           twine upload --skip-existing *
           popd
-          pushd wheels-linux-cross
-          twine upload --skip-existing *
-          popd
+          # pushd wheels-linux-cross
+          # twine upload --skip-existing *
+          # popd
           pushd wheels-linux
           twine upload --skip-existing *
           popd
