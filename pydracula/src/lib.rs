@@ -15,6 +15,7 @@ enum Language {
     Python,
     Rust,
     C,
+    Go,
     Cpp,
     Java,
     Typescript,
@@ -105,7 +106,7 @@ fn get_lines_with_executable_code(lang: Language, src: &str) -> Option<Vec<usize
     };
     Parser::new(treesitter_lang)
         .and_then(|parser| parser.non_executable_src_spans(src))
-        .map(|spans| get_lines_without_ranges(src, &spans))
+        .map(|spans| get_lines_without_ranges(src, spans))
 }
 
 #[pyfunction]
