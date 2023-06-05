@@ -7,69 +7,69 @@ on:
   workflow_dispatch:
 
 jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/.github/workflows/Python.yml
-  macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: 3.9
-          architecture: x64
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Build wheels - x86_64
-        uses: PyO3/maturin-action@v1
-        with:
-          target: x86_64
-          args: --release --out dist-x86-64 -m pydracula/Cargo.toml
-      - name: Install built wheel - x86_64
-        run: |
-          pip install ./dist-x86-64/pydracula-*.whl --force-reinstall
-          python -c "import pydracula; pydracula.Lang"
-      - name: Build wheels - universal2
-        uses: PyO3/maturin-action@v1
-        with:
-          args: --release --universal2 --out dist-universal2 -m pydracula/Cargo.toml
-      - name: Install built wheel - universal2
-        run: |
-          pip install ./dist-universal2/pydracula-*.whl --force-reinstall
-          python -c "import pydracula; pydracula.Lang"
-      - name: Upload wheels
-        uses: actions/upload-artifact@v3
-        with:
-          name: wheels-macos
-          path: |
-            dist-x86-64
-            dist-universal2
+#   macos:
+#     runs-on: macos-latest
+#     steps:
+#       - uses: actions/checkout@v3
+#       - uses: actions/setup-python@v4
+#         with:
+#           python-version: 3.9
+#           architecture: x64
+#       - uses: dtolnay/rust-toolchain@stable
+#       - name: Build wheels - x86_64
+#         uses: PyO3/maturin-action@v1
+#         with:
+#           target: x86_64
+#           args: --release --out dist-x86-64 -m pydracula/Cargo.toml
+#       - name: Install built wheel - x86_64
+#         run: |
+#           pip install ./dist-x86-64/pydracula-*.whl --force-reinstall
+#           python -c "import pydracula; pydracula.Lang"
+#       - name: Build wheels - universal2
+#         uses: PyO3/maturin-action@v1
+#         with:
+#           args: --release --universal2 --out dist-universal2 -m pydracula/Cargo.toml
+#       - name: Install built wheel - universal2
+#         run: |
+#           pip install ./dist-universal2/pydracula-*.whl --force-reinstall
+#           python -c "import pydracula; pydracula.Lang"
+#       - name: Upload wheels
+#         uses: actions/upload-artifact@v3
+#         with:
+#           name: wheels-macos
+#           path: |
+#             dist-x86-64
+#             dist-universal2
 
-  windows:
-    runs-on: windows-latest
-    strategy:
-      matrix:
-        target: [x64, x86]
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: 3.9
-          architecture: ${{ matrix.target }}
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          target: ${{ matrix.target }}
-          args: --release --out dist -m pydracula/Cargo.toml
-      - name: Install built wheel
-        run: |
-          pip install pydracula --no-index --find-links dist --force-reinstall
-          python -c "import pydracula; pydracula.Lang"
-      - name: Upload wheels
-        uses: actions/upload-artifact@v3
-        with:
-          name: wheels-windows
-          path: dist
+#   windows:
+#     runs-on: windows-latest
+#     strategy:
+#       matrix:
+#         target: [x64, x86]
+#     steps:
+#       - uses: actions/checkout@v3
+#       - uses: actions/setup-python@v4
+#         with:
+#           python-version: 3.9
+#           architecture: ${{ matrix.target }}
+#       - uses: dtolnay/rust-toolchain@stable
+#       - name: Build wheels
+#         uses: PyO3/maturin-action@v1
+#         with:
+#           target: ${{ matrix.target }}
+#           args: --release --out dist -m pydracula/Cargo.toml
+#       - name: Install built wheel
+#         run: |
+#           pip install pydracula --no-index --find-links dist --force-reinstall
+#           python -c "import pydracula; pydracula.Lang"
+#       - name: Upload wheels
+#         uses: actions/upload-artifact@v3
+#         with:
+#           name: wheels-windows
+#           path: dist
 
   linux:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, charmander]
     strategy:
       matrix:
         target: [x86_64, i686]
@@ -97,7 +97,7 @@ jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/
         path: dist
 
   linux-cross:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, charmander]
     strategy:
       matrix:
         target: [aarch64, armv7, s390x, ppc64le, ppc64]
@@ -133,7 +133,7 @@ jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/
         path: dist
 
   musllinux:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, charmander]
     strategy:
       matrix:
         target:
@@ -169,7 +169,7 @@ jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/
         path: dist
 
   musllinux-cross:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, charmander]
     strategy:
       matrix:
         platform:
@@ -208,8 +208,8 @@ jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/
 
   release:
     name: Release
-    runs-on: ubuntu-latest
-    needs: [ macos, windows, linux, linux-cross, musllinux, musllinux-cross ]
+    runs-on: [self-hosted, charmander]
+    needs: [ linux, linux-cross, musllinux, musllinux-cross ]
     steps:
       - uses: actions/download-artifact@v3 # download all artifacts
       - uses: actions/setup-python@v4
@@ -233,8 +233,8 @@ jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/
           pushd wheels-linux
           twine upload --skip-existing *
           popd
-          pushd wheels-windows
-          twine upload --skip-existing *
-          popd
-          pushd wheels-macos
-          twine upload --skip-existing **/*
+          # pushd wheels-windows
+          # twine upload --skip-existing *
+          # popd
+          # pushd wheels-macos
+          # twine upload --skip-existing **/*
