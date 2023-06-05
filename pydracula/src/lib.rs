@@ -126,6 +126,7 @@ fn pydracula(_py: Python<'_>, m: &types::PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(get_cleaned_source_code, m)?)?;
     m.add_function(wrap_pyfunction!(get_count_of_meaningful_lines, m)?)?;
     m.add_function(wrap_pyfunction!(get_lines_with_executable_code, m)?)?;
+    m.add_class::<Language>()?;
     m.add_class::<Lang>()?;
     Ok(())
 }
