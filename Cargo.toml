@@ -4,7 +4,7 @@ members = ["cdracula", "pydracula"]
 [workspace.package]
 edition = "2021"
 description = "🧛 Count-ing lines, AH AH AHH!"
-version = "0.2.0"
+version = "0.2.0-1"
 authors = ["Swarnim Arun <swarnim@deepsource.io>"]
 license-file = "LICENSE"
 documentation = "https://docs.rs/dracula"

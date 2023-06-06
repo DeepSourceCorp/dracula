@@ -40,7 +40,7 @@ checksum = "50d30906286121d95be3d479533b458f87493b30a4b5f79a607db8f5d11aa91f"
 
 [[package]]
 name = "cdracula"
-version = "0.2.0"
+version = "0.2.0-1"
 dependencies = [
  "dracula",
 ]
@@ -99,7 +99,7 @@ checksum = "56254986775e3233ffa9c4d7d3faaf6d36a2c09d30b20687e9f88bc8bafc16c8"
 
 [[package]]
 name = "dracula"
-version = "0.2.0"
+version = "0.2.0-1"
 dependencies = [
  "letr",
  "log",
@@ -307,7 +307,7 @@ dependencies = [
 
 [[package]]
 name = "pydracula"
-version = "0.2.0"
+version = "0.2.0-1"
 dependencies = [
  "dracula",
  "pyo3",
