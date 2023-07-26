@@ -7,66 +7,7 @@ on:
   workflow_dispatch:
 
 jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/.github/workflows/Python.yml
-#   macos:
-#     runs-on: macos-latest
-#     steps:
-#       - uses: actions/checkout@v3
-#       - uses: actions/setup-python@v4
-#         with:
-#           python-version: 3.9
-#           architecture: x64
-#       - uses: dtolnay/rust-toolchain@stable
-#       - name: Build wheels - x86_64
-#         uses: PyO3/maturin-action@v1
-#         with:
-#           target: x86_64
-#           args: --release --out dist-x86-64 -m pydracula/Cargo.toml
-#       - name: Install built wheel - x86_64
-#         run: |
-#           pip install ./dist-x86-64/pydracula-*.whl --force-reinstall
-#           python -c "import pydracula; pydracula.Lang"
-#       - name: Build wheels - universal2
-#         uses: PyO3/maturin-action@v1
-#         with:
-#           args: --release --universal2 --out dist-universal2 -m pydracula/Cargo.toml
-#       - name: Install built wheel - universal2
-#         run: |
-#           pip install ./dist-universal2/pydracula-*.whl --force-reinstall
-#           python -c "import pydracula; pydracula.Lang"
-#       - name: Upload wheels
-#         uses: actions/upload-artifact@v3
-#         with:
-#           name: wheels-macos
-#           path: |
-#             dist-x86-64
-#             dist-universal2
 
-#   windows:
-#     runs-on: windows-latest
-#     strategy:
-#       matrix:
-#         target: [x64, x86]
-#     steps:
-#       - uses: actions/checkout@v3
-#       - uses: actions/setup-python@v4
-#         with:
-#           python-version: 3.9
-#           architecture: ${{ matrix.target }}
-#       - uses: dtolnay/rust-toolchain@stable
-#       - name: Build wheels
-#         uses: PyO3/maturin-action@v1
-#         with:
-#           target: ${{ matrix.target }}
-#           args: --release --out dist -m pydracula/Cargo.toml
-#       - name: Install built wheel
-#         run: |
-#           pip install pydracula --no-index --find-links dist --force-reinstall
-#           python -c "import pydracula; pydracula.Lang"
-#       - name: Upload wheels
-#         uses: actions/upload-artifact@v3
-#         with:
-#           name: wheels-windows
-#           path: dist
 
   linux:
     runs-on: [self-hosted, charmander]
@@ -96,41 +37,6 @@ jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/
         name: wheels-linux
         path: dist
 
-  # linux-cross:
-  #   runs-on: [self-hosted, charmander]
-  #   strategy:
-  #     matrix:
-  #       target: [aarch64, armv7, s390x, ppc64le, ppc64]
-  #   steps:
-  #   - uses: actions/checkout@v3
-  #   - uses: actions/setup-python@v4
-  #     with:
-  #       python-version: 3.9
-  #   - name: Build wheels
-  #     uses: PyO3/maturin-action@v1
-  #     with:
-  #       target: ${{ matrix.target }}
-  #       manylinux: auto
-  #       args: --release --out dist -m pydracula/Cargo.toml
-  #   - uses: uraimo/run-on-arch-action@v2.5.0
-  #     if: matrix.target != 'ppc64'
-  #     name: Install built wheel
-  #     with:
-  #       arch: ${{ matrix.target }}
-  #       distro: ubuntu20.04
-  #       githubToken: ${{ github.token }}
-  #       install: |
-  #         apt-get update
-  #         apt-get install -y --no-install-recommends python3 python3-pip
-  #         pip3 install -U pip
-  #       run: |
-  #         pip3 install ./dist/pydracula-*.whl --force-reinstall
-  #         python3 -c "import pydracula; pydracula.Lang"
-  #   - name: Upload wheels
-  #     uses: actions/upload-artifact@v3
-  #     with:
-  #       name: wheels-linux-cross
-  #       path: dist
 
   musllinux:
     runs-on: [self-hosted, charmander]
@@ -168,43 +74,6 @@ jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/
         name: wheels-musllinux
         path: dist
 
-  # musllinux-cross:
-  #   runs-on: [self-hosted, charmander]
-  #   strategy:
-  #     matrix:
-  #       platform:
-  #         - target: aarch64-unknown-linux-musl
-  #           arch: aarch64
-  #         - target: armv7-unknown-linux-musleabihf
-  #           arch: armv7
-  #   steps:
-  #   - uses: actions/checkout@v3
-  #   - uses: actions/setup-python@v4
-  #     with:
-  #       python-version: 3.9
-  #   - name: Build wheels
-  #     uses: PyO3/maturin-action@v1
-  #     with:
-  #       target: ${{ matrix.platform.target }}
-  #       manylinux: musllinux_1_2
-  #       args: --release --out dist -m pydracula/Cargo.toml
-  #   - uses: uraimo/run-on-arch-action@v2.5.0
-  #     name: Install built wheel
-  #     with:
-  #       arch: ${{ matrix.platform.arch }}
-  #       distro: alpine_latest
-  #       githubToken: ${{ github.token }}
-  #       install: |
-  #         apk add py3-pip
-  #         pip3 install -U pip
-  #       run: |
-  #         pip install ./dist/pydracula-*.whl --force-reinstall
-  #         python -c "import pydracula; pydracula.Lang"
-  #   - name: Upload wheels
-  #     uses: actions/upload-artifact@v3
-  #     with:
-  #       name: wheels-musllinux-cross
-  #       path: dist
 
   release:
     name: Release
@@ -221,20 +90,9 @@ jobs: # credits for workflow from https://github.com/messense/crfs-rs/blob/main/
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
           pip install --upgrade twine
-          # pushd wheels-musllinux-cross
-          # twine upload --skip-existing *
-          # popd
           pushd wheels-musllinux
           twine upload --skip-existing *
           popd
-          # pushd wheels-linux-cross
-          # twine upload --skip-existing *
-          # popd
           pushd wheels-linux
           twine upload --skip-existing *
           popd
-          # pushd wheels-windows
-          # twine upload --skip-existing *
-          # popd
-          # pushd wheels-macos
-          # twine upload --skip-existing **/*
